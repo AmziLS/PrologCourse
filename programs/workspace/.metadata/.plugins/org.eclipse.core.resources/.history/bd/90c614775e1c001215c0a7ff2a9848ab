@@ -1,0 +1,58 @@
+% A simple task management system
+
+main :-
+  restore_tasks,
+  list_tasks,
+  do(help),
+  repeat,
+  write(' > '),
+  read(Command),
+% or just do(Command) and let the do loop handle errors
+  catch( do(Command), Err, err_handle(Err) ),
+  Command == quit,
+  save_tasks.
+
+err_handle(X) :-
+  write('****** '), write(X), nl,
+  fail.
+  
+do(help) :-
+   !,
+   write(`Welcome to Task Master.  The commands are:\n`).
+   write(`list -- list the tasks.\n`).
+   write(`add(Task) -- add a new task.\n`).
+   write(`status(Task, NewStatus) -- change the status of a task.\n`).
+   write(`quit -- exit Task Master.\n`).
+do(list) :- !, list_tasks.
+do(add(Task)) :- !, new_task(Task).
+do(status(Task,done)) :- !, done(Task).
+do(status(Task,Status)) :- !, change_status(Task, Status).
+do(quit) :- !.
+do(X) :- throw( bad_command(X) ).
+% or do(X) :- write(bad_command(X)), nl.
+
+save_tasks :-
+  tell('tasks.txt'),
+  listing(task),
+  told.
+
+restore_tasks :-
+  consult('tasks.txt').
+
+new_task(Task) :-
+  assert( task(Task, not_started) ).
+  
+done(Task) :-
+  retract( task(Task, _) ).
+  
+change_status(Task, Status) :-
+  retract( task(Task, _) ),
+  assert( task(Task, Status) ).
+  
+list_tasks :-
+  task(Task, Status),
+  write(Task), write(' : '),
+  write(Status), nl,
+  fail.
+list_tasks.
+  

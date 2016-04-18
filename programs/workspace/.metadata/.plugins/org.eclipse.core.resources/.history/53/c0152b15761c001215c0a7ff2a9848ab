@@ -1,0 +1,39 @@
+w(X,Y) :-
+  write('w X: '), write(X), nl,
+  write('w Y: '), write(Y), nl.
+
+z(IN, OUT) :-
+  OUT = out(IN).
+
+zz(IN, out(IN)).
+
+bt_assert(X) :-
+   assert(X).
+bt_assert(X) :-
+   retract(X),
+   fail.
+
+data(one).
+data(two).
+data(three).
+
+cut_a(X) :-
+   data(X).
+cut_a(done).
+
+cut_b(X) :-
+   data(X),
+   !.
+cut_b(done).
+
+cut_c(X, Y) :-
+   data(X),
+   !,
+   data(Y).
+cut_c(done, done).
+
+is_data(X) :-
+   data(X),
+   write('is data'), nl.
+is_data(X) :-
+   write('not data'), nl.

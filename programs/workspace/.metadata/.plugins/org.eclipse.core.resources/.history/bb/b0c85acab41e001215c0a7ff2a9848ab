@@ -1,0 +1,21 @@
+sentence(L1, L4) :-
+  subject(L1, L2),
+  verb(L2, L3),
+  object(L3, L4).
+  
+subject(L1, L3) :-
+  modifier(L1, L2),
+  noun(L2, L3).
+  
+object(L1, L3) :-
+  modifier(L1, L2),
+  noun(L2, L3).
+
+modifier([the|X], X).
+
+noun([cat|X], X).
+noun([mouse|X], X).
+noun([polar,bear|X], X).
+
+verb([chases|X], X).
+verb([eats|X], X).

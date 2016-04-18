@@ -1,0 +1,17 @@
+:- consult(jobs).
+
+main :-
+   reconsult(jobs_kb),
+   initialize,
+   find_job(JOB, DESC),
+   write('You could be a '),
+   write(JOB), nl,
+   write('The job requires: '), write(DESC),
+   nl, nl,
+   fail.
+main.
+
+prompt(P, C, A) :-
+   write(P), tab(1), write(C), tab(1),
+   read_string(S),
+   string_term(S,A).

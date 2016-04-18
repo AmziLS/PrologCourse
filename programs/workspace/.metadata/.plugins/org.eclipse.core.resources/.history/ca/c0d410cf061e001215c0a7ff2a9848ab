@@ -1,0 +1,311 @@
+:- ensure_loaded(list).
+:- import(list).
+
+%-----------------------------------------------------
+% create a number of isa1(T1, T2) facts,
+% where T1 is a T2.
+%
+   
+isa1(basketball, team_sport).
+isa1(baseball, team_sport).
+isa1(football, team_sport).
+isa1(softball, baseball).
+isa1(hardball, baseball).
+isa1(team_sport, sport).
+isa1(individual_sport, sport).
+isa1(golf, individual_sport).
+isa1(golf, frustrating).
+isa1(apple, fruit).
+isa1(pear, fruit).
+isa1(fruit, food).
+isa1(apple, computer).
+isa1(macintosh, apple).
+isa1(pc, computer).
+isa1(hamburger, meat).
+isa1(meat, food).
+isa1(hotdog, meat).
+
+%--------------------------------------------------------------------
+% isa(X, Y)
+% Y - a category
+% X - an item that fits in that category, or its subcategory.
+%
+% ?- isa(football, team_sport).
+% yes.
+% ?- isa(golf, team_sport).
+% no.
+% ?- isa(golf, sport).
+% ?- isa(X, sport).
+% X = baseball ; etc.
+%
+
+isa(Item, Cat) :-
+   isa1(Item, Cat).
+isa(Item, Cat) :-
+   isa1(Item, X),
+   isa(X, Cat).
+ 
+%--------------------------------------------------------
+% Like ancestor/descendent - isa will be more efficient
+% one way than the other.
+%
+% Rather than write two predicates, write one with two
+% recursive clauses, one for each case.
+%
+% The built-in var(X) can be used to test if an argument
+% is a variable.  Or nonvar(X) can be used instead.
+%
+% The cut (!) can be used to tell Prolog not to consider
+% the second recursive clause if the first one is being
+% used.
+%
+
+isa2(Item, Cat) :-
+   isa1(Item, Cat).
+isa2(Item, Cat) :-
+   nonvar(Cat),
+   !,
+   isa1(X, Cat),
+   isa2(Item, X).
+isa2(Item, Cat) :-
+   isa1(Item, X),
+   isa2(X, Cat).
+
+%--------------------------------------------------
+% basic_isa(Category).
+%
+% lists all the lowest level items in a category.
+%
+% basic_isa(food).
+% delicious
+% macintosh
+% pear
+% hamburger
+% hotdog
+%
+
+basic_isa(Cat, X) :-
+   isa(X, Cat),
+   not isa1(_, X).
+
+basic_isa(Cat) :-
+   not isa1(_, Cat),
+   write( Cat - ` not a category` ) ,nl,
+   !, fail.
+basic_isa(Cat) :-
+   basic_isa(Cat, X),
+   write(X),
+   nl,
+   fail.
+basic_isa(_).
+
+%---------------------------------------------------------
+% create ako1 ( a kind of ) facts that are logically the
+% same but are represented using lists.
+% ako( Category, Items ).
+%
+
+ako1(sport, [team_sport, individual_sport]).
+ako1(team_sport, [basketball, baseball, football, ultimate_frisbee]).
+ako1(individual_sport, [golf, tennis, rock_climbing, running, cycling]).
+ako1(baseball, [softball, hardball]).
+ako1(football, [touch_football, flag_football, tackle_football]).
+ako1(rock_climbing, [bouldering, sport_climbing, trad_climbing]).
+ako1(cycling, [mountain_biking, road_racing]).
+ako1(alcohol, [wine, beer]).
+ako1(beer, [bud, miller, corona]).
+ako1(wine, [merlot, chardonay]).
+ako1(pizza, [pepperoni_pizza, cheese_pizza]).
+ako1(movie, [drama_flic, comedy_flic, action_flic, scifi_flic]).
+ako1(scifi_flic, ['Matrix', 'Terminator']).
+ako1(action_flic, ['Matrix', 'Terminator', 'The Mummy']).
+ako1(comedy_flic, ['Nurse Betty', 'Dumb and Dumber']).
+
+%----------------------------------------------------------
+% ako(X, Y).
+%
+% Works just like isa, but uses the ako1 facts.
+%
+% ?- ako(softball, baseball).
+% yes
+% ?- ako(X, baseball).
+% X = softball;
+% X = hardball;
+% ?- ako(softball, X).
+% X = baseball
+%
+
+ako(Item, Cat) :-
+   ako1(Cat, Items),
+   member(Item, Items).
+ako(Item, Cat) :-
+   nonvar(Cat),
+   !,
+   ako1(Cat, SubCats),
+   member(SubCat, SubCats),
+   ako(Item, SubCat).
+ako(Item, Cat) :-   
+   ako1(SuperCat, Items),
+   member(Item, Items),
+   ako(SuperCat, Cat).
+
+%--------------------------------------------------
+% akon(X, Y, N)
+% Same, but with N being the count of degrees of
+% separation
+%
+
+akon(I, C, N) :-
+   akon(I, C, 1, N).
+   
+akon(Item, Cat, N, N) :-
+   ako1(Cat, Items),
+   member(Item, Items).
+akon(Item, Cat, I, N) :-
+   nonvar(Cat),
+   !,
+   ako1(Cat, SubCats),
+   member(SubCat, SubCats),
+   II is I + 1,
+   akon(Item, SubCat, II, N).
+akon(Item, Cat, I, N) :-
+   ako1(SuperCat, Items),
+   member(Item, Items),
+   II is I + 1,
+   akon(SuperCat, Cat, II, N).
+
+%------------------------------------------------------------
+% One more time using an operator.
+%
+% X <<= Y
+% is exactly the same as isa1(Y, X).
+%
+% Then write
+% X =>> Y which is the same as isa(X,Y).
+%
+
+:- op(200, xfx, <<=).
+:- op(200, xfx, =>>).
+
+team_sport <<= baseball.
+baseball <<= hardball.
+baseball <<= softball.
+
+X =>> Y :-
+   Y <<= X.
+X =>> Y :-
+   Y <<= Z,
+   X =>> Z.
+
+%-----------------------------------------------
+% add some people and the things they like
+%
+
+person(bob, [softball, golf, pizza, movies]).
+person(sally, [tackle_football, mountain_biking, 'Matrix']).
+person(bill, [bud, 'Terminator']).
+person(sue, [merlot, golf, 'Matrix']).
+person(samantha, [pizza, parks, 'Terminator']).
+person(al, [parks, golf, 'Nurse Betty']).
+person(sabina, [merlot, tackle_football, 'The Mummy']).
+
+
+%----------------------------------------------
+% likes(Person1, Person2, Category).
+% Two persons who share a common interest, where the
+% interest might be a super category of an interest.
+%
+% ?- likes(sue, bill, C).
+% C = alcohol
+% 
+
+likes(X, Y, Cat) :-
+   person(X, XLikes),
+   person(Y, YLikes),
+   X \= Y,
+   match(XLikes, YLikes, Cat).
+
+match(XLikes, YLikes, Cat) :-
+   member(Cat, XLikes),
+   member(Cat, YLikes).
+match(XLikes, YLikes, Cat) :-
+   member(Ix, XLikes),
+   member(Iy, YLikes),
+   ako(Ix, Cat),
+   ako(Iy, Cat).
+
+%----------------------------------------------
+% likes2(Person1, Person2, Category).
+% Two persons who share a common interest, where the
+% interest might be a super category of an interest.
+%
+% ?- likes2(sue, bill, C, N).
+% C = alcohol
+% 
+% likes_best(Person, N - P2:Cat).
+%
+% uses findall and keysort to find the best match for a person.
+%
+
+likes2(X, Y, Cat, N) :-
+   person(X, XLikes),
+   person(Y, YLikes),
+   X \= Y,
+   match2(XLikes, YLikes, Cat, N).
+
+match2(XLikes, YLikes, Cat, 0) :-
+   member(Cat, XLikes),
+   member(Cat, YLikes).
+match2(XLikes, YLikes, Cat, N) :-
+   member(Ix, XLikes),
+   member(Iy, YLikes),
+   akon(Ix, Cat, C1),
+   akon(Iy, Cat, C2),
+   N is max(C1, C2).
+
+likes_best(X, Best) :-
+   findall(C-(Y:Cat), likes2(X, Y, Cat, C), YList),
+   keysort(YList, [Best | _]).
+
+%------------------------------------------------------
+% likes3(X, Y, C)
+% X & Y are persons
+% they like each other if they have a common like
+%
+% just find direct matches
+%
+
+likes3(X, Y, Path) :-
+   likes3(X, Y, [X], Path).
+   
+likes3(X, Y, SoFar, P) :-
+   person(X, XLikes),
+   person(Y, YLikes),
+   not member(Y,SoFar),
+   match3(XLikes, YLikes, Cat),
+   reverse([Y|SoFar], P).
+likes3(X, Y, SoFar, P) :-
+   person(X, XLikes),
+   person(Z, ZLikes),
+   not(member(Z, SoFar)),
+   match3(XLikes, ZLikes, Cat),
+   likes3(Z, Y, [Z|SoFar], P).
+
+match3(XLikes, YLikes, Cat) :-
+   member(Cat, XLikes),
+   member(Cat, YLikes).
+
+
+%----------------------------------------------------
+% likes4(X, Y, L)
+% L is a list of all the common interests, without
+% extraneous heirarchical ones. i.e, just the closest
+% for each.
+%
+% Walk the list of likes for X using member, and get the
+% closest, i.e., the first, match for each in  Y's list
+% and note that category and the distance.
+%
+%
+
+

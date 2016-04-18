@@ -1,0 +1,9 @@
+:- set_prolog_flag(utf8io, on).
+
+a(㐱).
+a(㐱).
+a(㐱).
+a(㐱).
+a(㐱).
+
+b(X) :- a(X).

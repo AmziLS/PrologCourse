@@ -1,0 +1,16 @@
+% Russian Dolls exercises
+%
+% Russian dolls are the ones that nest within each
+% other.  At the end is a wooden doll.
+%
+% A Russian doll that can hold another is represented
+% for these exercises as a(_).  So it is a structure,
+% a/1.  The wooden doll is represented by just the
+% atom a.  For example, a triple nested doll is:
+%
+%   a(a(a(a)))
+
+% a test doll.
+
+a_test( a(a(a(a))) ).
+

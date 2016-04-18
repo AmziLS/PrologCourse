@@ -1,0 +1,323 @@
+Amzi! Prolog Course 2012 -- Exercises
+
+#1 The IDE Environment
+
+  Import all projects.
+      IDE menu: File / Import
+      Dialog: Existing Projects into Workspace
+      Dialog: Browse to directory with projects
+      Dialog: Select all
+
+   Open 'family_1' project.
+   Open 'family.pro'.
+   
+  File/Run Run As Interpreted Single File
+   
+    To see the program:
+    ?- listing.
+    
+    To see a predicate:
+    ?- listing(parent).
+    
+    enter these queries and use ; after each answer
+    until you get to 'no'
+    ?- mother(M, diego).
+    ?- ancestor(X, diego).
+
+    Quit the listener.
+    In the editor, add some more parent/2 facts
+      (maybe fix the Chinese ones?)
+    Run again looking new people.
+
+  File/Run Debug As Interpreted Single File
+
+    Enter query:
+    ?- mother(M, diego).
+    trace it's execution.
+    Step through the execution.
+    Quit the debugger.
+    Return to 'Prolog' view.
+    Close the project.
+
+#2 Simple Queries
+
+  Open the 'nonsense' project
+  Run as interpreted single file, queries.pro
+  Predict in your head the answers to these queries
+     before trying them, using ; to get all answers.
+  
+  ?- easy(2).
+  ?- easy(X).
+  ?- gizmo(a,X).
+  ?- gizmo(X,3).
+  ?- gizmo(d,Y).
+  ?- gizmo(X,X).
+  ?- harder(a,X).
+  ?- harder(c,X).
+  ?- harder(X,1).
+  ?- harder(X,4).
+  
+  Close 'nonsense'
+  
+  Open the 'flights' project
+  Run as interpreted single file, flight_data.pro
+  Make queries for the following questions:
+
+    how many seats on a 727?
+    does united fly to miami?
+    does delta fly to miami?
+    find flights to lax
+    find flights from cvg
+    what's the full name of cvg and its map coordinates?
+    what's the call letters for 'Houston, TX'?
+    what city is mapped at location(35,14)?
+    where does delta fly from-to?
+    what type of aircraft goes to lax?
+
+#3 Compound Queries
+
+  Open the 'nonsense' project
+  Run as interpreted single file, queries.pro
+  Predict in your head the answers to these queries
+     before trying them, using ; to get all answers.
+  
+  ?- gizmo(a,X), easy(X).
+  ?- gizmo(c,X), easy(X).
+  ?- gizmo(d,Z), easy(Z).
+  ?- easy(Y), gizmo(X,Y).
+  ?- easy(X), harder(Y,X).
+  ?- harder(Y,X), easy(X).
+  
+  Close 'nonsense'
+  
+  Open the 'family' project
+  To enable UTF-8 encoding in a project:
+    - open amzi.cfg
+    - add the line: utf8io = on  after the initial comments
+    - right click on project name, select properties, then
+      resources and select UTF-8 as the encoding.
+  Open for editting family_cn.pro to see the use of Chinese
+    in the rules.  (Who are the people I put in?)
+  Modify family.pro to include some more family members and
+    gender information.
+  Write queries to find:
+  
+    fathers
+    grandparents (you can call the same goal multiple times)
+      ?- parent(X, Y), parent(Y, Z).
+    grandfathers
+    grandmothers
+    great grandparents
+    siblings? uncles? aunts?
+    
+  Close 'family'
+  
+  Open 'flights', single file consult flight_data.pro
+  Make queries to answer these quetions:
+    
+    names of passengers flying on flight 114  
+    names & addresses of passengers flying to cvg
+    destination of bugs bunny
+    destinations of passengers from toonsville
+    airports one connection from lax (use flight twice in query)
+        reverse the two flight goals above and compare results
+        compare execution of both in the debugger
+    airports two connections from lax
+
+#4 Backtracking Reporting Loops
+
+  Using flight_data.pro
+
+  Create query reports on:
+
+    passengers going to cvg
+    passengers flying delta
+    passengers flying on 727s
+    airlines used by passengers
+    destinations of people from toonsville
+
+  Create nested query reports:
+
+    flights by carrier, and passenger ids on each (use tab to indent)
+      delta
+        101
+      delta
+        102
+          8989
+      delta
+        103
+      ...
+    cities linked to lax and the cities linked to each of those cities
+
+#5 Pure Rules
+
+  In nonsense, run as interpreted single file: rules.pro
+  predict the answers to the following queries:
+  
+  ?- a(X,2).
+  ?- b(X,kalamazoo).
+  ?- c(X,b3).
+  ?- c(X,Y).
+  ?- d(X,Y).
+  
+  close nonsense.
+
+  In family
+    - add more family members (but not too many, there will be
+      better ways to build a family tree explained later in the course.)
+    - create a file called relations.pro in the family project
+    - delete the file family_cn.pro (or set the property of the project
+      to exclude it - right click on project name, select properties, add
+      family_cn.pro to the exclude list.)
+    - write rules for the following in relations.pro:
+        mother(M, C).
+        father(F, C).
+        grandparent(GP, C).
+        grandmother(GM, C).
+        grandfather(GF, C).
+        greatgrandparent(GGP, C).
+      use them both ways, to find grandchildren and grandparents.
+    - run as interpreted project.  This will consult both files,
+         family.pro and relations.pro.
+    - use ?- listing. to confirm all are consulted.
+    - test each, for example, ?- mother(X,Y).
+    - write rules for other family relations in relations.pro:
+        sibling, brother, sister, uncle, aunt, cousin, ...
+        (hint: you need 'not' or '\=' to avoid being a brother to yourself)
+
+#6 Practical Rules
+
+  In flights
+    - create flight_rules.pro
+    - write reporting rules to:
+       - show_flights(FROM, TO).
+       - show_passengers(FLIGHT).
+       - show_passengers(FROM, TO).
+       - show_connection(FROM, TO).
+         (hint -- like grandparent, find a flight to an intermediate,
+          and show both flights in the report)
+    - put in the rule for distance:
+      distance(FROM, TO, DIST) :-
+        city(FROM, _, location(X1,Y1)),
+        city(TO, _, location(X2,Y2)),
+        DIST is sqrt( (X2-X1)**2 + (Y2-Y1)**2 ).
+    - make some rules for cost:
+       - cost(FLIGHT, COST).
+          the cost of a delta flight is 10 * the distance
+          the cost of a united flight is 8 * the distance
+          add a special case, flight 111 is only 20
+          break the first rule into two rules, one for flights
+             > 20 miles and one less, with different rates per mile.
+          delta flights from CVG cost 50% more
+    - add a rule that asks the user to enter the FROM and TO
+        and then report the cost of those flights.
+    - modify show_flights to first show direct flights, and then
+        to show connecting flights, so FROM, TO, and VIA.
+    - write a report to show the options for connecting flights
+        between two cities and the cost, adding the costs of the two
+        flights.
+    - mayhem -- it's considered dangerous to have two passengers
+       from toonville, or two ducks booked on a single flight.  Find
+       those situations.
+
+#7 Dynamic Database, Control Constructs, File I/O
+
+  in flights
+    - use tasks.pro as an example
+    - add predicates to dynamically change the booked/2 clauses
+      - save, restore, add_booking, delete_booking, change_booking.
+    - do the same for passengers.
+    - create a command loop for running the flight program
+       - have it save and restore passenger and booking information
+       - allow commands to see flights to and from locations with prices
+       - include one stop options as well
+
+#8 Recursion
+
+  in toys
+    - trace the execution of factorial_1 and factorial_2
+      paying attention to the call stack and the variable bindings.
+      Note how the last call version gets the answer immediately and
+      how fast it unwinds the stack.
+      
+  in family
+    - experiment with ancestor, debugging it's performance
+      to understand how it works.
+    - write descendent/2, like ancestor, but optimized for
+      finding descendents.
+  
+  in dating
+    - open dating/dating.pro.  Fill in the missing predicates
+        down to END OF ISA EXERCISES.
+      
+  in dolls
+    -  open russian_dolls.pro
+    -  fill in the missing predicates up the end of turkish dolls.
+    -  if you have time, work on the open structures.  The turkish
+       dolls are a binary tree and can store sorted items.
+       NOTE:  @>, @<, @>=, @=<  can be used to compare text values
+       ?- apple @> pear.
+       no
+       ?- apple @< pear.
+       yes
+       
+#9 List Utilities
+
+  - look in toys/fares.pro and understand those predicates,
+      after doing the exercises below
+  
+  - in lists/lists.pro - copy and paste the comments and code below and
+      fill in the missing predicates.
+
+#10 List Uses
+
+  in flights
+    - use the path searching to find all possible routes from one city
+      to the next.
+  
+  in lists
+    - write the set predicates in lists.pro
+  
+  in dating
+    - fill in the missing predicates in the AKO exercises
+
+#11 Difference Lists, DCG
+
+  in dcg
+    - add a chinese module
+    - expand the grammar and vocabulary for english and chinese
+    
+    NOTE: the dictionary can be taken out of DCG if you want:
+      dict(dog, dog, noun).
+      dict(cat, cat, noun).
+      dict(the, the, modifier).
+      dict(eats, eats, verb).
+    In spanish module these would be:
+      dict(dog, perro, noun, masculine).
+      dict(cow, vaca, noun, feminine).
+      etc.
+    And then the grammar rules would use the dictionary:
+      noun(Meaning) --> [Word], { dict(Meaning, Word, noun) }.
+  
+  in flights
+    - build a command language interface for the flights system
+
+#12 Frames
+
+  in frames
+    - write the various frame processing tools
+    - pizzas, fill in the 'stub' parts of various predicates.
+    - flights (in frames) fill in the 'stub' parts of the code.
+
+#13 Puzzles
+
+  in puzzles
+    - solve the fox puzzle
+    - solve the 8 queens problem
+       put 8 queens on a chess board so none can capture any other
+       this is a constraint problem, usually solved with a generate and test
+       algorithm.  Generate a possible placement, test if it's OK, backtrack
+       if not.  NOTE that if your notation has numbers for Row:Col, then there
+       cannot be any duplicate Rows/Cols amongst pieces.  Two pieces are on
+       the same diagonal if the R1+C1 =:= R2+C2, or R1-C1 =:= R2-C2
+

@@ -1,0 +1,8 @@
+w(X,Y) :-
+  write('w X: '), write(X), nl,
+  write('w Y: '), write(Y), nl.
+
+z(IN, OUT) :-
+  OUT = out(IN).
+
+zz(IN, out(IN)).

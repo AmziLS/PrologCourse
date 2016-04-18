@@ -1,0 +1,14 @@
+rule(r1, [
+   goal :: report = `loan is approved`,
+   conditions :: status = ok ]).
+
+rule(r2, [
+   goal :: report = `loan is denied: ` + credit_report + ` ` + amount_report
+   conditions :: status = notok ]).
+
+rule(r3, [
+   goal :: status = notok,
+   conditions :: credit_score < 100 ]).
+
+rule(r4, [
+   goal :: status = ok ]).

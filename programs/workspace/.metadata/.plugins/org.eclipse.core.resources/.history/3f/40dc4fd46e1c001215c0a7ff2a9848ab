@@ -1,0 +1,213 @@
+% flight_ew(FROM,TO).
+%
+% A rule that selects flights that go East to West, used
+% for first path finding exercises.
+
+:- op(500, yfx, =>).
+
+connection(FROM, TO, VIA, FL1, FL2) :-
+   flight(FROM, VIA, _, FL1, _),
+   flight(VIA, TO, _, FL2, _),
+   not FROM = TO.
+
+flight_ew(A,B) :-
+   flight(A,B,_,_,_),
+   city(A, _, location(Xa,_)),
+   city(B, _, location(Xb,_)),
+   Xa > Xb.
+
+% a simple cost for slides
+
+cost1(FROM, TO, delta, COST) :-
+   distance(FROM, TO, DIST),
+   DIST < 20,
+   COST is 10 * DIST.
+cost1(FROM, TO, delta, COST) :-
+   distance(FROM, TO, DIST),
+   DIST >= 20,
+   COST is 10 * DIST + 100.
+cost1(FROM, TO, united, COST) :-
+   distance(FROM, TO, DIST),
+   COST is 8 * DIST.
+
+price1_flight(FL, PRICE) :-
+   flight(FROM, TO, CARRIER, FL, _),
+   cost1(FROM, TO, CARRIER, PRICE).
+
+price1_report(FROM) :-
+   flight(FROM, TO, CARRIER, FL, _),
+   price1_flight(FL, PRICE),
+   tab(2), write(TO), tab(1), write(PRICE), nl,
+   fail.
+price1_report(_).
+
+price1_report(FROM, TO) :-
+   flight(FROM, TO, CARRIER, FL, _),
+   price1_flight(FL, PRICE),
+   tab(2), write(CARRIER), tab(1), write(FL),
+   tab(1), write(PRICE), nl,
+   fail.
+price1_report(_, _).
+
+price1_report :-
+   city(FROM, _, _),
+   write(FROM), nl,
+   price1_report(FROM),
+   fail.
+price1_report.
+
+price1_user :-
+   write('From where? '),
+   read(FROM),
+   write('To where? '),
+   read(TO),
+   price1_report(FROM, TO).
+
+% base mileage rate for different plane types.
+
+base_rate(delta, 727, 8).
+base_rate(delta, 767, 10).
+base_rate(united, 727, 7).
+base_rate(united, 767, 9).
+
+distance(FROM, TO, DIST) :-
+   city(FROM, _, location(X1,Y1)),
+   city(TO, _, location(X2,Y2)),
+   DIST is sqrt( (X2-X1)**2 + (Y2-Y1)**2 ).
+
+cost(FROM, TO, direct(CARRIER, FLIGHT_NUMBER), COST) :-
+   flight(FROM, TO, CARRIER, FLIGHT_NUMBER, PLANE),
+   base_rate(CARRIER, PLANE, RATE),
+   distance(FROM, TO, DIST),
+   BASE_COST is RATE * DIST,
+   specials(CARRIER, FROM, TO, BASE_COST, COST).
+cost(FROM, TO, connect( flight(C1,F1), VIA, flight(C2,F2) ), COST) :-
+   connection(FROM, TO, VIA, _, _),
+   cost(FROM, VIA, direct(C1,F1), COST1),
+   cost(VIA, TO, direct(C2,F2), COST2),
+   COST is COST1 + COST2.
+   
+specials(delta, cvg, _, BASE, COST) :-
+   COST is BASE * 2.
+specials(united, den, _, BASE, COST) :-
+   COST is BASE * 2.
+specials(_, _, mia, BASE, COST) :-
+   COST is BASE - 25.
+specials(_, _, _, COST, COST).
+
+california_flight(lax, _).
+california_flight(_, lax).
+
+mayhem(P1, P2) :-
+   P1 \= P2,
+   passenger(_, _, P1, address(toonsville,_)),
+   passenger(_, _, P2, address(toonsville,_)).
+mayhem(P1, P2) :-
+   P1 \= P2,
+   passenger(duck, _, P1, _),
+   passenger(duck, _, P2, _).
+
+look_for_mayhem :-
+   flight(TO, FROM, _, FL, _),
+   not california_flight(TO, FROM),
+   booked(P1, FL),
+   booked(P2, FL),
+   mayhem(P1, P2),
+   passenger(LAST1, FIRST1, P1, _),
+   passenger(LAST2, FIRST2, P2, _),
+   write(FL), tab(1), write(TO), tab(1), write(FROM), nl,
+   tab(2), write(FIRST1), tab(1), write(LAST1), nl,
+   tab(2), write(FIRST2), tab(2), write(LAST2), nl,
+   fail.
+look_for_mayhem :- write(done), nl.
+   
+main :-
+   repeat,
+   write('CourseAir> '),
+   read(COMMAND),
+   once do(COMMAND),
+   COMMAND = quit.
+
+save_data :-
+   tell('passenger_data.pro'),
+   listing(passenger),
+   listing(booking), 
+   listing(current_id),
+   told.
+
+restore_data :-
+   reconsult(passenger_data).
+
+next_id(NEXT) :-
+   retract(current_id(CURRENT)),
+   NEXT is CURRENT + 1,
+   assert(current_id(NEXT)).
+       
+do(help) :-
+   write('CourseAir commands are: '), nl,
+   write('  show_passengers(FLIGHT)'), nl,
+   write('  show_passengers(FROM, TO)'), nl,
+   write('  show_flights(FROM, TO)'), nl,
+   write('  look_for_mayhem'), nl,
+   write('  quit'), nl.
+  
+do(show_flights(FROM,TO)) :- show_flights(FROM,TO).
+do(look_for_mayhem) :- look_for_mayhem.
+do(show_passengers(FLIGHT)) :- show_passengers(FLIGHT).
+do(show_passengers(FROM,TO)) :- flight(FROM, TO, _, FL, _), show_passengers(FL).
+do(quit).
+do(X) :- write('Unknown Command: '), write(X), nl.
+
+show_flights(FROM, TO) :-
+   flight(FROM, TO, CARRIER, FL, _),
+   write(CARRIER), tab(1), write(FL), nl,
+   fail.
+show_flights(_, _).
+
+bt_assert(X) :-
+   assert(X).
+bt_assert(X) :-
+   retract(X),
+   fail.
+   
+find_path(From,To) :-
+   path_db(From,To),
+   !,
+   retract( temp_path(F,T,C,N) ),
+   write(F/T/C/N), nl,
+   fail.
+find_path(_,_).
+   
+path_db(F,T) :-
+   flight(F,T,C,N,_),
+   bt_assert( temp_path(F,T,C,N) ).
+path_db(F,T) :-
+   flight(F,X,C,N,_),
+   not temp_path(_,X,_,_),
+   bt_assert( temp_path(F,X,C,N) ),
+   path_db(X,T).
+   
+find_connect(FROM, TO, FROM => TO) :-
+   flight(FROM, TO, _, _, _).
+find_connect(FROM, TO, FROM => VIA => TO) :-
+   flight(FROM, VIA, _, _, _),
+   flight(VIA, TO, _, _, _).
+
+find_route(FROM, TO, ROUTE) :-
+   route(FROM, TO, FROM, ROUTE).
+   
+route(FROM, TO, SOFAR, SOFAR => TO) :-
+   flight(FROM, TO, _,_,_).
+route(FROM, TO, SOFAR, ROUTE) :-
+   flight(FROM, VIA, _,_,_),
+   not visited(VIA, SOFAR),
+   route(VIA, TO, SOFAR => VIA, ROUTE).
+
+visited(CITY, CITY).
+visited(CITY, _ => CITY).
+visited(CITY, ROUTE => _) :-
+   visited(CITY, ROUTE).
+   
+
+
+

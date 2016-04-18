@@ -1,0 +1,35 @@
+rule(r1, [
+   goal :: price = duration * 5,
+   conditions :: day_type = weekend
+   ]).
+   
+rule(r2, [
+   goal :: price = duration * 7,
+   conditions :: day_type = weekday and start >= 2000
+   ]).
+   
+rule(r3, [
+   goal :: price = duration * 10,
+   conditions :: day_type = weekday and start < 2000
+   ]).
+   
+rule(r4, [
+   goal :: day_type = weekend,
+   conditions :: day = saturday or day = sunday
+   ]).
+
+rule(r5, [
+   goal :: day_type = weekend,
+   conditions :: day = friday and start >= 2000
+   ]).
+
+rule(r6, [
+   goal :: day_type = weekday,
+   conditions :: day = friday and start < 2000
+   ]).
+
+rule(r7, [
+   goal :: day_type = weekday,
+   conditions :: day = monday or day = tuesday or day = wednesday or day = thursday
+   ]).
+   

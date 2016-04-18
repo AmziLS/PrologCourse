@@ -1,0 +1,49 @@
+% A simple task management system
+
+main :-
+  restore_tasks,
+  list_tasks,
+  repeat,
+  write(' > '),
+  read(Command),
+  catch( do(Command), Err, err_handle(Err) ),
+  Command == quit,
+  save_tasks.
+
+err_handle(X) :-
+  write('****** '), write(X), nl,
+  fail.
+  
+do(list) :- list_tasks, !.
+do(add(Task)) :- new_task(Task), !.
+do(status(Task,done)) :- done(Task), !.
+do(status(Task,Status)) :- change_status(Task, Status), !.
+do(help) :- write(`See the code for how to use this.\n`).
+do(quit) :- !.
+do(X) :- throw( bad_command(X) ).
+
+save_tasks :-
+  tell('tasks.txt'),
+  listing(task),
+  told.
+
+restore_tasks :-
+  consult('tasks.txt').
+
+new_task(Task) :-
+  assert( task(Task, not_started) ).
+  
+done(Task) :-
+  retract( task(Task, _) ).
+  
+change_status(Task, Status) :-
+  retract( task(Task, _) ),
+  assert( task(Task, Status) ).
+  
+list_tasks :-
+  task(Task, Status),
+  write(Task), write(' : '),
+  write(Status), nl,
+  fail.
+list_tasks.
+  

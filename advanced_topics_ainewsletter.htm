@@ -1,0 +1,2925 @@
+<html>
+<head>
+<title>Advanced Prolog Notes</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body bgcolor="#FFFFFF" text="#000000">
+<h1>Advanced Prolog Notes</h1>
+<h3>Excerpts from AI Newsletter<br>
+  www.ainewsletter.com</h3>
+
+            <ul>
+              <li><a href="#two_faces">Two Faces of Prolog</a></li>
+              <li><a href="#rule_engines">Rule Engines</a></li>
+              <li><a href="#ontologies">Ontologies - Fancy Dictionaries</a></li>
+              <li><a href="#chat_bots">Chat Bots - Can Machines Think?</a></li>
+              <li><a href="#chatbot_ontology_code">Chat Bot & Ontology Code</a></li>
+              <li><a href="#drug_interaction">Case Study - Rule Engine + Ontology</a></li>
+              <li><a href="#bayesian">Bayesian Belief Systems</a></li>
+              <li><a href="#interactive_fiction">Logic Base and Interactive Fiction</a></li>
+            </ul>
+
+
+            <h2><a name="two_faces"></a>The Two Faces of Prolog</h2>
+            <p>Prolog is a confusing language because it is really two languages 
+              in one. It is said Prolog is very simple and easy to use. This is 
+              true. It is said that Prolog is obtuse and difficult to learn. This 
+              is also true. It is said Prolog has only limited applicability. 
+              This is true. It is said Prolog can be used for all sorts of wondrous 
+              applications. This is also true.</p>
+            <p>One face of Prolog is as a simple, straightforward rule language 
+              that can be used to easily implement efficient logic bases of formal 
+              rules. Pricing, tax code, and automated form-filling are some examples 
+              of this type of application. In these cases, the business rules 
+              are mapped directly to Prolog rules.</p>
+            <p>For example, consider these Prolog rules for a simple phone pricing 
+              system. The price is ten cents a minute before 7:00AM and after 
+              8:00PM, and 25 cents a minute in between. </p>
+            
+<pre>
+price(StartHour, DurationMinutes, PriceCents) :-
+   (StartHour < 7 ; StartHour > 20),
+   PriceCents is DurationMinutes * 10.
+price(StartHour, DurationMinutes, PriceCents) :-
+   StartHour >= 7,
+   StartHour =< 20,
+   PriceCents is DurationMinutes * 25.
+</pre>
+            
+<p>It doesn't take much training to learn the <b>:-</b> (called the neck) symbol 
+  means &quot;if&quot;, the comma is &quot;and&quot; and the semicolon is &quot;or&quot;, 
+  and how these declarative rules directly encode the business logic for pricing. 
+  Also, anything beginning with an upper case letter is a logical variable, so 
+  these predicates expect StartHour and DurationMinutes as input, and output PriceCents.</p>
+            <p>The rules can refer to other rules and encode a complexity that 
+              matches the complexity of the business rules, for example the nightmare 
+              of pricing air fares.</p>
+            <p>It is this use of Prolog that is easy, but limited. It's great 
+              for crisp business rules, but you cannot readily use Prolog like 
+              this for anything involving uncertainty, or requiring the construction 
+              of solutions, as in an application that creates product configurations 
+              for customers. Pricing configurations, and bill-of-materials, on 
+              the other hand, fit nicely into this simple subset of Prolog.</p>
+            <p>The other face of Prolog is the use of rules as meta-rules. That 
+              is, the rules are used to describe ways of representing knowledge 
+              and ways of reasoning with that knowledge. This use of Prolog often 
+              requires using recursion, unification (pattern-matching) of complex 
+              structures, and list manipulation, all concepts that require more 
+              work to master. But once mastered, they enable remarkable expressiveness 
+              of complex programming concepts.</p>
+            <p>For example, here's a few lines of Prolog code that implements 
+              an object-oriented system with full polymorphism (the ability to 
+              send the same message to different object types with appropriate 
+              responses).</p>
+            <p>First, Prolog structures are used to represent the knowledge of 
+              the objects. These are class definitions with the signature of the 
+              type of object, and the methods that can be called for that object. 
+              This is the knowledge representation for our system.</p>
+            <pre>oo_class( rectangle(H, W), 
+          methods([ ( area(A) :- A is H * W ), 
+                    ( perimeter(P) :- P is 2 * (H + W) ) 
+                  ]) ). 
+oo_class( circle(R), 
+          methods([ ( area(A) :- A is pi * R * R ), 
+                    ( perimeter(P) :- 2 * pi * R ) 
+                  ]) ). 
+</pre>
+            <p>Next, a single Prolog meta-rule implements a polymorphic &quot;send&quot;, 
+              the heart of any OO system. This is the reasoning engine for the 
+              system. It is a logical specification of the program. What is the 
+              logical specification of &quot;send&quot; in an OO system?</p>
+            <ul>
+              <li>find the class definition for the object, and its list of methods;</li>
+              <li>find the method that matches the message being sent to the object;</li>
+              <li>call that method with the object's data.</li>
+            </ul>
+            <p>Here it is in Prolog:</p>
+            <pre>
+oo_send(Object, Message) :- 
+  oo_class(Object, methods(Ms)), 
+  member((Message :- Method), Ms), 
+  call(Method). 
+</pre>
+            <p>An additional meta-rule that finds a member of a list is also needed.</p>
+            <pre>
+member(X, [X|_]). 
+member(X, [_|Z]) :- member(X, Z).</pre>
+            <p>While the code for pricing was probably pretty clear, this code 
+              might look obtuse if you don't know Prolog. This is the face of 
+              Prolog that is harder to learn, but is extremely powerful for implementing 
+              all sorts of applications that are, as in our definition of AI, 
+              not in the nature of computers.</p>
+            <p>If the code above was in a file, called oo.pro, it could be tested 
+              in a Prolog listener like this:</p>
+            <pre>
+?- consult(oo).
+yes
+?- oo_send(circle(1), area(A)).
+A = 3.14159
+yes
+?- oo_send(rectangle(2,4), area(A)).
+A = 8.0
+yes
+</pre>
+            
+<p>It is only one's imagination that limits the breadth of custom systems that 
+  can be built using these concepts.</p>
+<hr>
+<h2><a name="rule_engines"></a>Rule Engines</h2>
+            <p>When an off-the-shelf tool fits a problem well, then it is a good 
+              choice. But often times the off-the-shelf tool doesn't quite work 
+              as required, or is simply too expensive. In that case it's time 
+              to consider writing your own.</p>
+            <p>The advantage to writing your own rule language and engine is it 
+              can be adapted precisely to the application at hand. In this month's 
+              code corner we'll build one for the pricing rules example. The examples 
+              will use Prolog, but the ideas can be incorporated in any language.</p>
+            <p>There are two key aspects in building a rule engine:</p>
+            <ul>
+              <li>designing the knowledge representation, and</li>
+              <li>implementing the reasoning engine.</li>
+            </ul>
+            <h3>Knowledge Representation</h3>
+            <p>Frame like structures are a very convenient way to store information 
+              and have the advantage that they can be easily mapped to various 
+              front-end user interfaces. The frames will have two slots, one for 
+              the goal of the rule and the other for the conditions. The <font face="Courier New, Courier, mono">::</font> 
+              operator is used to separate the name of the slot from its value. 
+              Here's the first pricing rule.</p>
+            <pre>rule(r1, [
+   goal :: price = duration * 5,
+   conditions :: day_type = weekend
+   ]).</pre>
+            <p>We can now put a front end on this type of structure that maps 
+              to fields in a GUI, or use Prolog's definite clause grammar (DCG) 
+              to create a more natural language syntax, such as</p>
+            <pre>if day_type = weekend then price = duration * 5.</pre>
+            <p>In either case, internally we'll use the frame representation of 
+              the rule, and the user interface project we'll save for another 
+              day.</p>
+            <p>The other key decision is how to store the factual knowledge that 
+              is used and derived by the rules. For this application simple attribute 
+              - value pairs can be stored in Prolog clauses called <b>known/2</b>. 
+              For example,</p>
+            <pre>known(day, saturday).</pre>
+            <p>These facts will be dynamically asserted as discovered.</p>
+            <p>Here's the rest of the rules for the pricing example, including 
+              two rules that determine whether a day is a weekend or not.</p>
+            <pre>rule(r2, [
+   goal :: price = duration * 7,
+   conditions :: (day_type = weekday) and (start &gt;= 2000)
+   ]).
+rule(r3, [
+   goal :: price = duration * 10,
+   conditions :: (day_type = weekday) and (start &lt; 2000)
+   ]).
+rule(r4, [
+   goal :: day_type = weekend,
+   conditions :: (day = saturday) or (day = sunday)
+   ]).
+rule(r5, [
+   goal :: day_type = weekday,
+   conditions :: (day \= saturday) and (day \= sunday)
+   ]).</pre>
+            <p>In order for Prolog to read these rules, we need to define the 
+              operators that are not already part of the language. These definitions 
+              should appear in the beginning of the file.</p>
+            <pre>:- op(850, xfx, ::).
+:- op(820, xfy, or).
+:- op(810, xfy, and).</pre>
+            <p>We need a utility predicate that can extract a slot value from 
+              a frame. It is a variation on the classic <b>member/2</b> predicate 
+              that knows about our particular format for slots and also doesn't 
+              backtrack once its found a solution.</p>
+            <pre>get_slot(Slot, Val, [Slot :: Val | _]) :-
+   !.
+get_slot(Slot, Val, [_ | Slots] :-
+   !,
+   get_slot(Slot, Val, Slots).</pre>
+            <h3>Reasoning Engine</h3>
+            <p>Before getting into the details of the reasoning engine, we need 
+              some test data. This is the sort of application that will be driven 
+              by data and will not require an interactive dialog with the user. 
+              So here's a few test phone calls, with an ID, Day, Start Time (in 
+              24 hour HHMM format) and Duration in minutes.</p>
+            <pre>phone_call(1, tuesday, 1800, 10).
+phone_call(2, wednesday, 2200, 10).
+phone_call(3, saturday, 2200, 10).
+phone_call(4, monday, 1600, 10).
+phone_call(5, sunday, 800, 10).</pre>
+            <p>For testing we create a <b>main/0</b> predicate that uses a repeat/fail 
+              loop to walk through the test calls, initializing the reasoning 
+              engine each time and then asserting the known data for the call 
+              being processed. The call to <b>solve/2</b> then finds the price.</p>
+            <p>For a real application, this code would most likely be in a procedural 
+              language that is choreographing the interaction between a database 
+              of call data, the pricing logic base and the billing output.</p>
+            <pre>main :-
+   price_calls.
+
+price_calls :-
+   phone_call(ID, Day, Start, Duration),
+   init,
+   assert( known(duration, Duration) ),
+   assert( known(start, Start) ),
+   assert( known(day, Day) ),
+   solve(price, P),
+   write(id = ID), tab(2),
+   write(price = P), nl,
+   fail.
+price_calls.</pre>
+            <p>Initialization is simply clearing out any <b>known/2</b> clauses 
+              from a previous run.</p>
+            <pre>init :-
+   retractall(known(_,_)).</pre>
+            <p>The main entry point, <b>solve/2</b>, immediately calls <b>find/2</b> 
+              which tries to find the value for an attribute. There are two ways, 
+              the first being that the value of the attribute is already known. 
+              If it is, <b>find/2</b> looks no further and then tests to see if 
+              the value is the one being sought and fails or succeeds accordingly. 
+            </p>
+            <p>The second way is to use the rules. The second clause does a backtracking 
+              search of the <b>rule/2</b> frames, first checking if the goal slot 
+              sets a value for the sought after attribute, then getting the conditions 
+              of the rule and calling <b>prove/1</b> to see if the conditions 
+              hold or not.</p>
+            <p>If not, another rule is tried, but if so, the attribute's value 
+              is evaluated, in case it is a formula, stored in a <b>known/2</b> 
+              clause so it doesn't have to be computed again, and then compared 
+              with the sought after value.</p>
+            <pre>  
+solve(Attr, Val) :-
+   find(Attr, Val).
+
+find(Attr, Val) :-
+   known(Attr, X),
+   !,
+   Val = X.
+find(Attr, Val) :-
+   rule(R, RuleAttrs),
+   get_slot(goal, Attr = X, RuleAttrs),
+   get_slot(conditions, Conds, RuleAttrs),
+   prove(Conds),
+   eval(X, V),
+   assert(known(Attr, V)),
+   !,
+   Val = V.</pre>
+            <p><b>prove/1</b> recursively breaks down complex condition statements 
+              with ands and ors in them, looking for primitive conditions to prove.</p>
+            <pre>prove( C1 and C2 ) :-
+   prove(C1),
+   prove(C2).
+prove(C1 or C2) :-
+   ( prove(C1)
+     ;
+     prove(C2) ).</pre>
+            <p>For the primitive conditions, <b>prove/1</b> uses <b>find/2</b> 
+              to get the value of an attribute and then performs whatever test 
+              is necessary.</p>
+            <pre>prove(A = V) :-
+   find(A, V).
+prove(Attr \= Val) :-
+   find(Attr, V),
+   V \= Val.
+prove(Attr < Val) :-
+   find(Attr, V),
+   V < Val.
+prove(Attr >= Val) :-
+   find(Attr, V),
+   V >= Val.</pre>
+            <p>It's easy to expand the system to include other such tests.</p>
+            <p>Because <b>find/2</b> calls <b>prove/1</b> and <b>prove/1</b> calls 
+              <b>find/2</b>, the system will easily track through complex chains 
+              of interconnected rules. Tracing the behavior of this program in 
+              a Prolog debugger will illustrate that.</p>
+            <p>Because the rules don't just return a price per minute, but actually 
+              calculate the price of the call, we need the ability to evaluate 
+              a formula where some of the elements in the formula refer to values 
+              of facts. This could recursively call <b>find/2</b>, allowing forumlas 
+              to trigger further reasoning, but for now we assume that the formula 
+              refers to facts already known.</p>
+            <p>The clauses of <b>eval/2</b> break down the forumla, applying the 
+              mathematical operations at each step using the Prolog built-in math 
+              operator, <b>is/2</b>. We only implemented multiplication because 
+              that's all we needed. Other <b>eval/2</b> clauses can be added for 
+              other mathematical operators or other types of functions we might 
+              want implemented.</p>
+            <pre>eval(A, V) :-
+   known(A, V),
+   !.
+eval(E1 * E2, V) :-
+   eval(E1, V1),
+   eval(E2, V2),
+   V is V1 * V2,
+   !.
+eval(V, V).</pre>
+            <p>We now have our own rule language for rules like pricing rules. 
+              It can be integrated into larger application contexts, and expanded 
+              as the application requires. It can also be used for other types 
+              of problems that are similar to pricing.</p>
+            <p>Testing it in a Prolog listener:</p>
+            <pre>?- main.
+id = 1  price = 100
+id = 2  price = 70
+id = 3  price = 50
+id = 4  price = 100
+id = 5  price = 50
+
+yes</pre>
+            <h3>Enhancements</h3>
+            <p>The rules should be kept in a different file from the reasoning 
+              engine, so that different logic bases could be used for different 
+              applications. The solve predicate would then consult the appropriate 
+              rule file.</p>
+            <p>Either a GUI or DCG front end on the rules would be nice. This 
+              would allow for easier editing of the rules.</p>
+            <p>The reasoning engine could use with some tracing statements that 
+              optionally display what rule is being tried, what condition being 
+              tested, etc. This could be used for debugging.</p>
+            <p>The issue with weekdays and weekends was solved with a rule, but 
+              an ontology would be a better solution. It would allow the adding 
+              and use of definitions independent of the actual rules.</p>
+            <p>For large complex rule bases, a more efficient rule syntax could 
+              be used that had the attribute as a primary argument that was indexed, 
+              allowing for quick access of rules for a particular attribute.</p>
+<p>&nbsp;</p>
+<hr>
+<h2><a name="ontologies"></a>Ontologies</h2>
+            <p>Early on AI researchers realized that a big problem with building 
+              &quot;intelligent&quot; systems was that computers lacked common 
+              sense knowledge of the world.</p>
+            <p>Consider, for example, trying to write a natural language understanding 
+              program with these two sentences:</p>
+            <p><i>It was a canary. The beak was injured.</i></p>
+            <p>It's one thing to be able to parse the words, but quite another 
+              to &quot;understand&quot; what it means. A human makes use of the 
+              knowledge that 1) a canary is a type of bird, and that 2) a beak 
+              is a part of a bird to understand this sentence.</p>
+            <p>So, in order to write a computer program that can understand those 
+              sentences, it is not enough to know grammar rules and parts of speach, 
+              it is also necessary to somehow encode the knowledge that a canary 
+              is a bird and a beak is a part of a bird.</p>
+            <p>This, in computer science terms, is an ontology.</p>
+            <p>One could argue that this is a poor word choice. If you look up 
+              ontology in the dictionary it talks about the philosophy of existence. 
+              Which makes software ontologies sound like something very heavy 
+              indeed.</p>
+            <p>But they're not. A software ontology is simply encoded knowledge 
+              about concepts and relationships. Like</p>
+            <pre>canary is_a bird.
+beak is_part_of bird.</pre>
+            <p>Often times an expert system has two parts. One is an ontology, 
+              describing the terminology of the domain; and the other is rules 
+              that are used to reason over that domain.</p>
+            <p>For example, a technical support system might have these rules 
+              to let a user know which way to tilt slashes in a directory path:</p>
+            <pre>If error = bad_path and directory_separator \= os_directory_separator then 
+  tilt_slashes.
+If operating_system = windows then os_directory_separator = backslash.
+If operating_system = unix then os_directory_separator = forwardslash.</pre>
+            <p>And be supported by this ontology:</p>
+            <pre>windows is_a operating_system.
+unix is_a operating_system.
+W2K is_a windows.
+XP is_a windows.
+W98 is_a windows.
+Linux is_a unix.
+Solaris is_a unix.</pre>
+            <p>Using the rules and ontology together, a tech support system could 
+              then have a dialog like this:</p>
+            <pre>What error? bad_path
+What directory_separator? forwardslash
+What operating_system? W98
+Recommendation: tilt_slashes</pre>
+            
+<p>It is the ontology that lets the rules act as if they understand that W98 is 
+  a windows operating system.</p>
+  
+  
+<hr>
+            
+<h2><a name="chat_bots"></a>Chat Bots</h2>
+<h2><a name="machines_think"></a>Can Machines Think?</h2>
+            <h3><a name="turing_test"></a>Turing Test</h3>
+            <p>In 1950 Alan Turing published <i><a href="#links">Computing Machinary 
+              and Intelligence</a></i> in the quarterly journal, Mind. Thanks 
+              to the Internet, its now easy to read this original article that 
+              is still to this day one of the defining works in AI. It is a great 
+              read.</p>
+            <p>In it he asked the question &quot;Can machines think?&quot;. And 
+              he proposed a simple test. If a human conversed, via keyboard, with 
+              a machine and with a human, and could not tell which was which, 
+              then that machine could be called &quot;intelligent&quot;. This 
+              is the famous <b>Turing Test</b>.</p>
+            <p>Over 50 years later, intelligent people are still debating whether 
+              or not the Turing Test has anything to do with machine intelligence 
+              or not.</p>
+            <h3><a name="loebner_prize"></a>Loebner Prize</h3>
+            <p>In 1990 <a href="#links">Hugh Loebner</a> offered $100,000 and 
+              a neat gold medal to the first person to write a computer program 
+              that passed the Turing Test. There is an annual competition at which 
+              various software authors compete for the prize.</p>
+            <p>A panel of judges carry on dialogs with a number of humans and 
+              machines. They then rate each on a scale from most machine like 
+              to most human like. The machine with the highest score wins the 
+              competition. If its score is competitive with the scores received 
+              by the humans, then the authors claim the medal and the money. If 
+              not, they get $2,000 and everyone tries again next year.</p>
+            <p>So far, the prize has not been claimed. Some claim it can't be 
+              done without the giant ontologies of common sense discussed last 
+              month; others claim it requires perfecting natural language understanding; 
+              and still others say a learning program is needed. But the best 
+              entries so far have been based on a very simple idea.</p>
+            <h2><a name="machines_converse"></a>Can Machines Converse?</h2>
+            <h3><a name="eliza"></a>ELIZA</h3>
+            <p>In 1966 Joseph Weizenbaum described his program <a href="#links">ELIZA</a>. 
+              It was a very simple pattern-matching program that generated realistic 
+              responses to its input. It was designed to mimic a psychiatrist. 
+              (Weizenbaum, Joseph &#147;ELIZA&#151;A Computer Program for the 
+              Study of Natural Language Communication between Man and Machine,&#148; 
+              Communications of the ACM, Vol. 9. No. 1 (January 1966))</p>
+            <p>For example, here's one of the ELIZA rules from one implementation 
+              of ELIZA. (See the <a href="#links">links</a> for source code in 
+              a number of languages.)</p>
+            <pre>rules([[dream,3],[
+   [1,[_],0,
+   [what,does,that,dream,suggest,to,you,?],
+   [do,you,dream,often,?],
+   [what,persons,appear,in,your,dreams,?],
+   [do,you,believe,that,dreaming,has,something,to,do,with,your,problem,?],
+   [newkey]]]]).
+ </pre>
+            <p>If the input had the word 'dream' in it, this rule would generate 
+              the response, using one of the four choices. It doesn't matter what 
+              the rest of the input was.</p>
+            <p>Think about this a second. These are pretty much the kinds of responses 
+              one would get in a conversation when bringing up a dream.</p>
+            <p>Another powerful idea in ELIZA was pronoun swapping. In the input, 
+              all first person pronouns became second person and visa versa. So 
+              an input like &quot;I remember Alaska&quot; would match the patterns 
+              in this rule (The 'Y' in the rules is a wild card.):</p>
+            <pre>rules([[remember,5],[
+   [1,[_,you,remember,Y],0,
+   [do,you,often,think,of,Y,?],
+   [does,thinking,of,Y,bring,anything,else,to,mind,?],
+   [what,else,do,you,remember,?],
+   [why,do,you,remember,Y,just,now,?],
+   [what,in,the,present,situation,reminds,you,of,Y,?],
+   [what,is,the,connection,between,me,and,Y,?]],
+   [2,[_,do,i,remember,Y],0,
+   [did,you,think,'I',would,forget,Y,?],
+   [why,do,you,think,i,should,recall,Y,now,?],
+   [what,about,Y,?],
+   [equal,[what,0]],
+   [you,mentioned,Y,.]],
+   [3,[_],0,
+   [newkey]]]]).
+ </pre>
+            <p>And generate a response like &quot;Do you often think of Alaska?&quot;.</p>
+            <p>Weizenbaum was horrified at how many people enjoyed chatting with 
+              ELIZA and that fact that even some therapists thought ELIZA was 
+              a useful therapeautic tool. He wrote ELIZA in part to prove that 
+              machines can NOT think. Yet people were interacting with the program 
+              as if it could.</p>
+            <p>But who do you enjoy talking to the most? Isn't it the person who 
+              listens, and ask questions prompting you to go on and on about yourself? 
+              ELIZA just follows the user's lead, letting him/her talk about whatever 
+              he/she wants. What more could someone want in a conversationalist? 
+              What more does a therapist do?<br>
+            </p>
+            <h2><a name="people_think"></a>Can People Think?</h2>
+            <p><a href="#links">Richard Wallace,</a> one of the developers of 
+              A.L.I.C.E., which won the Loebner competition (not the prize, just 
+              the most human-like of the machine contestants), observes that the 
+              majority of casual human dialog is really just simple pattern-matching 
+              response. He notes that people aren't really paying attention to 
+              each other and just spitting back responses based on what's on their 
+              mind and maybe a trigger or two from what they just heard.</p>
+            <p>The disturbing part of the debate on ELIZA is not whether it is 
+              intelligent or not. Clearly it's not.</p>
+            <p>The disturbing question is whether ELIZA is human-like or not. 
+              Clearly it is.</p>
+            <h2><a name="chat_bots"></a>Chat Bots</h2>
+            <p>ELIZA was fun, and prompted all sorts of derivitive works, generically 
+              called chat bots.</p>
+            <h3><a name="alice"></a>A.L.I.C.E.</h3>
+            <p> A.L.I.C.E. won the Loebner prize twice. It's really just a more 
+              sophisticated version of ELIZA with a much larger set of patterns. 
+              The development of the patterns is made easy by a standardized AI 
+              Markup Language (AIML) that is a well-formed XML. AIML can be used 
+              by anyone to create any sort of chat bot.</p>
+            <p>Here's some of the AIML from the winning version of A.L.I.C.E.</p>
+            <pre> &lt;category&gt;
+   &lt;pattern&gt;HOW AM I SUPPOSED *&lt;/pattern&gt;
+   &lt;template&gt;
+   &lt;random&gt;
+   &lt;li&gt;Carefully.&lt;/li&gt;
+   &lt;li&gt;Think about it.&lt;/li&gt;
+   &lt;li&gt;Don't just give up.&lt;/li&gt;
+   &lt;/random&gt;
+   &lt;think&gt;
+   &lt;set name=&quot;it&quot;&gt;
+   &lt;set name=&quot;topic&quot;&gt;
+   &lt;person/&gt;
+   &lt;/set&gt;
+   &lt;/set&gt;
+   &lt;/think&gt;
+   &lt;/template&gt;
+   &lt;/category&gt;
+ </pre>
+            <p>This, of course, fits the definition of AI used in this newsletter, 
+              which is the creation of a virtual machine to run programs written 
+              in a language well suited for a particular domain. In this case 
+              AIML is a perfect language for creating chat bots and an AIML runtime 
+              makes it go.</p>
+            <h3><a name="mgonz"></a>MGonz</h3>
+            <p>Maybe its not significant, but I thought it was funny. Mark Humphry 
+              wrote a chat bot to stand in his place when he was away from his 
+              computer. Here's some rules from it that are triggered by the keyword 
+              'Mark' in the input:</p>
+            <pre> ( (member 'mark input)
+   (delve '(
+   (mark isnt here and hes left me to deal with
+   cretins like you)
+   (forget mark i will destroy him like the others)
+   (mark doesnt want to talk to you fishface
+   why do you think im here)
+   (listen leave that jerk out of it talk to me)
+   )))
+ </pre>
+            <h2><a name="failing_turing_test"></a>Failing the Turing Test</h2>
+            <p><i>Dave: Open the pod bay door HAL<br>
+              HAL: I'm sorry, I can't do that Dave.</i></p>
+            <p>That scene from 2001 brilliantly captures all our fears of AI, 
+              the horror of unfeeling machines empowered to run our lives.</p>
+            <p>I recently installed anti-spam software and was experiencing the 
+              very human emotion of frustration trying to get the software to 
+              work. I'd clearly done something simple wrong, but couldn't figure 
+              out what. So I contacted tech support.</p>
+            <p>It was a Web site. The FAQ didn't have the answer. But they recommended 
+              Chat with a technical support person. Sounded good, so I tried it:</p>
+            <p>Technical Support Chat: You have been connected to Sean Bourke.<br>
+              Sean Bourke (S): Dennis, thank you for contacting McAfee<br>
+              S: How can I assist you today?<br>
+              Me (D): I just installed spam killer and don't seem to be able to 
+              get it to work.<br>
+              S: Are you receiving any error message?<br>
+              D: No, I got it to work once, but it didn't filter anything.<br>
+              I ran it over night, and it didn't find anything, yet when I ran<br>
+              Eudora, I had tons of spam, like usual.<br>
+              S: Dennis, if I understand correctly, you have the SpamKiller not 
+              filtering<br>
+              mesages. Is this correct?<br>
+              D: That is almost right. It found one message a little while ago. 
+              The <br>
+              blue arrow in on now<br>
+              S: I would be happy to assist you with that.<br>
+              D: OK, so give me a starting point. Is your name ELIZA?<br>
+              S: No.<br>
+              S: What is the version of SpamKiller that is installed on the system?<br>
+              D: I just installed it from your Web site yesterday, so its the 
+              latest<br>
+              version.<br>
+              ...<br>
+              S: Based on the information you have provided, I can now provide 
+              the<br>
+              steps that should resolve your issue. If at any time there is something<br>
+              you do not understand, will you please stop me and let me know?<br>
+              D: You didn't just type that did you? There's something non-human 
+              on<br>
+              your end.<br>
+              S: No, I am a real person here.<br>
+              D: You sound like ELIZA, give me some slang to prove you're human.<br>
+              S: I am going to send you some instructions that will open a new 
+              window.<br>
+              D: I'm reading them now, but I also do an AI newsletter and would 
+              like<br>
+              to write about you<br>
+              S: Okay<br>
+              (I followed the instructions, still didn't work)<br>
+              D: I've been pretty frustrated, if we can't get it going I'd like 
+              to know<br>
+              how to get a refund.<br>
+              S: Could you please tell me the country you are in?<br>
+              D: USA<br>
+              S: This issue or concern is supported by our Customer Service group. 
+              You<br>
+              may call 1-972-963-8000, select the option that best meets your 
+              needs, and they will be<br>
+              able to assist you.<br>
+              D: What is wrong with my installation of Spam Killer?<br>
+              S: Nothing is wrong. You will just need to follow a few steps to 
+              configure the spamkiller<br>
+              using the instructions that I sent you.<br>
+              D: But I did that! It doesn't work.</p>
+            <p>(Called phone number, just recorded menu items, referring me back 
+              to<br>
+              Web page that gives me the option of this chat again or paying $39 
+              to talk<br>
+              to someone.)</p>
+            
+<p>Well, the instructions were just how to re-install, which of course didn't 
+  work and subsequent passes through the same loop gave the same answer, so I 
+  did the logical thing and threw my mouse across the room and made a note not 
+  to get another radio controlled mouse.</p>
+<hr>
+
+<h2><a name="chatbot_ontology_code"></a>Chat Bot &amp; Ontology Code</h2>
+            <ul>
+              <li><a href="#chat_bot">Writing a Chat Bot</a></li>
+              <li><a href="#ontology">Building an Ontology</a></li>
+              <li><a href="#chat_bot_ontology">Chatting with an Ontology</a></li>
+              <li><a href="#conferences">Conferences</a></li>
+            </ul>
+            <p>I've been meaning to add code corners to the last few newsletters 
+              but hadn't found the time. So this newsletter will be all about 
+              building the types of AI systems discussed in the last few issues. 
+              In other words, this is an issue for those who want to roll up their 
+              sleeves and create their own AI systems.</p>
+            <p>The two types of AI application studied are chat bots (<a href="http://www.ainewsletter.com/newsletters/aix_0307.htm">July 
+              2003 newsletter</a>) and ontologies (<a href="http://www.ainewsletter.com/newsletters/aix_0306.htm">June 
+              2003 newsletter</a>).</p>
+            <p>Both are perfect examples of the ideas expressed in the first newsletter 
+              (<a href="http://www.ainewsletter.com/newsletters/aix_0211.htm">November 
+              2002</a>) about AI applications in general. Both require a knowledge 
+              representation language and a reasoning engine that knows how to 
+              apply that knowledge.</p>
+            <p>In the case of chat bots, the knowledge is patterns of inputs and 
+              responses that drive a dialog. In the case of ontologies, the knowledge 
+              is relationships and attributes of words and concepts.</p>
+            <p>A chat bot tool provides a way to represent the knowledge and a 
+              way to deploy it. An ontology tool does the same.</p>
+            <p>There are chat bot and ontology tools available, and good ones 
+              at that, but they suffer the problems of all AI tools. They make 
+              assumptions about how and what types of knowledge can be represented, 
+              and further, on how that knowledge is deployed.</p>
+            <p>If the assumptions fit an application area, that's great. But if 
+              not... Well that's a very practical line of reasoning. The simple 
+              truth is, its a lot more fun to play with your own knowledge representation 
+              and reasoning engine, and, you can get it to do exactly what you 
+              want.</p>
+            <p>The programs can be written in any programming language, but we'll 
+              use Prolog in the newsletter because it is particularly versatile 
+              for a rapid prototyping and experimentation approach to AI concepts, 
+              as well as being very compact and fitting better in a newsletter.</p>
+            <p>Logic programs have the added benefit that they read much like 
+              program specifications and can be used for the design of applications 
+              intended for implementation in other languages. So if you don't 
+              like Prolog, read along and code in Lisp, Mozart, Java or the language 
+              of your choice. For those that don't know Prolog, there are boxes 
+              with explanatory notes.</p>
+            <p>One final note. Design decisions for the programs were always made 
+              in favor of clarity, sometimes at the expense of performance, although 
+              this will not be an issue until the knowledge base for either program 
+              grows to a large size.</p>
+            <p>As always I like to read your feedback, and for any who request 
+              it I can e-mail back the <a href="chat_ont.txt">source code</a> 
+              developed in this article.</p>
+            <h2><a name="chat_bot"></a>Chat Bot</h2>
+            <p>Chat bot is the generic name for programs derived from Weizenbaum's 
+              original Eliza program, which mimicked a therapist. Eliza was written 
+              almost as a joke, to show how mindless pattern-matching rules can 
+              be used to generate realistic conversations, thus proving the software 
+              was NOT intelligent. Yet chat bots have come closer to passing the 
+              Turing test than other types of programs, and Richard Wallace hypothesizes 
+              that that is because much human dialog is, in fact, mindless pattern-matching.</p>
+            <h3>Pronoun Reversal</h3>
+            <p>One of the main insights in Eliza was how much can be done simply 
+              by changing the grammatical person of a sentence, like 'I' to 'you' 
+              and 'mine' to 'yours'. This is called pronoun reversal. We'll start 
+              with a very simple, and extremely annoying chat bot that does only 
+              that, and adds a question mark at the end.</p>
+            <p>To represent the knowledge of which words to reverse, we'll use 
+              Prolog facts, which are logically the same as relations in a relational 
+              database. Here's the few we'll use for testing, in a relation call 
+              <b>me_you/2</b>, the /2 indicating there are two arguments.</p>
+            <blockquote> 
+              <pre><font color="#000099">me_you(me,you).
+me_you(i,you).
+me_you(my,your).
+me_you(am,are).</font></pre>
+            </blockquote>
+            <p>The choice of the me_you/2 predicate was the first design decision 
+              about knowledge representation.</p>
+            <h3>Input/Output</h3>
+            <p>The reasoning engine needs an interface to the user or caller. 
+              For the chat bot all that is required is a predicate (like a function) 
+              that takes an input string of user text and puts out a response 
+              string. A predicate <b>respond</b> with two arguments, the input 
+              and the response, provides that service. It is refered to in Prolog 
+              as <b>respond/2</b>.</p>
+            <p>Any application that can call Prolog could be used to provide the 
+              dialog interface with the user, and Prolog is certainly a language 
+              that can call Prolog. Here's a simple loop for a console version 
+              of the program that can also be run in a Prolog listener (interpreter).</p>
+            <blockquote> 
+              <pre><font color="#000099">main :-
+   write('DDJ AI Expert ChatBot Sample'), nl,
+   repeat,
+   write('> '), read_string(InputString),
+   respond(InputString, ResponseString),
+   write(ResponseString), nl,
+   InputString == `quit`.</font>
+</pre>
+            </blockquote>
+            <table width="100%" border="1" cellpadding="10" bordercolor="#000099" bgcolor="#DFFFFF">
+              <tr> 
+                <td>A Prolog <b>logic base</b>, or program, is made up of logical 
+                  <b>clauses</b> that define <b>predicates</b>. This one is simple. 
+                  The predicate is called <b>main/0</b> (the /0 indicating no 
+                  arguments) and has only one clause. After the neck<b> :-</b> 
+                  symbol are a comma separated list of <b>goals</b>, which typically 
+                  call other predicates. The most important one here is <b>respond/2</b>, 
+                  which will do the real work. Logical variables are indicated 
+                  by an initial upper case letter, such as <b>InputString</b>.</td>
+              </tr>
+            </table>
+            <h3>Core Pattern Matcher</h3>
+            <p>How should a sentence be represented internally by the program? 
+              Thinking of the sentence as a list of words seems like a good starting 
+              point. Proceeding in a top-down manner, here is the implementation 
+              of <b>respond/2</b>.</p>
+            <blockquote> 
+              <pre><font color="#000099">respond(InputString, ResponseString) :-
+   string_to_list(InputString, InputWordList),
+   swap_person(InputWordList, SwappedWordList),
+   form_response(SwappedWordList, ResponseWordList),
+   list_to_string(ResponseWordList, ResponseString),
+   !.</font>
+</pre>
+            </blockquote>
+            <table width="100%" border="1" cellpadding="10" bordercolor="#000099" bgcolor="#DFFFFF">
+              <tr> 
+                <td>The <b>!</b>, called <b>cut</b>, is used to turn off Prolog's 
+                  automatic backtracking search for multiple solutions for a given 
+                  rule. In this case, we only want one response for each user 
+                  input.</td>
+              </tr>
+            </table>
+            <p>The first and last goal of respond/2 perform the service of converting 
+              strings to and from lists of words. For experimentation, those steps 
+              could be simply eliminated, using lists directly for input and output. 
+              For final use, those steps should be quite nice, dealing with punctuation 
+              and capitalization. For now, we'll make use of simple built-in predicates 
+              that do the conversion for us but require everything in lower case. 
+              Later nicer versions of these can be implemented.</p>
+            <blockquote> 
+              <pre><font color="#000099">string_to_list(String, List) :-
+   string_tokens(String, List).
+
+list_to_string(List, String) :-
+   stringlist_concat(List, ` `, String).</font>
+</pre>
+            </blockquote>
+            <table width="100%" border="1" cellpadding="10" bordercolor="#000099" bgcolor="#DFFFFF">
+              <tr> 
+                <td>The utility predicates for dealing with strings and lists 
+                  are not part of the ISO standard for Prolog, so different implementations 
+                  support different ones. They are all relatively easy to write 
+                  in Prolog. The two used here, <b>string_tokens/2</b> and <b>stringlist_concat/3</b> 
+                  are part of Amzi! Prolog. You might have to find equivalents 
+                  for other Prologs, or, simply skip this step and use lists directly 
+                  for input and output.</td>
+              </tr>
+            </table>
+            <p>Next to implement is the real guts of the program where the <b>me_you/2</b> 
+              knowledge is applied in the first step of creating a response. Recursion 
+              is typically used to process lists in Prolog. The recursive rules 
+              to replace the pronouns in a list of words are:</p>
+            <p><b>boundary condition</b> - The list is empty, we're done.<br>
+              <b>recursive condition</b> - Take the first word in the list and 
+              call <b>swap_word/2</b> to see what the replacement word is. Put 
+              that word in the output list and recursively call the rest of input 
+              list to generate the rest of the output list.</p>
+            <blockquote> 
+              <pre><font color="#000099">swap_person([], []).
+swap_person([X|Xs], [Y|Ys]) :-
+   swap_word(X,Y),
+   !, swap_person(Xs,Ys).
+</font>
+</pre>
+            </blockquote>
+            <table width="100%" border="1" cellpadding="10" bordercolor="#000099" bgcolor="#DFFFFF">
+              <tr> 
+                <td> 
+                  <p><b>[H|T]</b> is Prolog notation for separating a list into 
+                    its head (first element), and tail (remainder of the list). 
+                    This allows for the easy writing of recursive rules where 
+                    some operation is performed on the head, and the tail is then 
+                    used as the argument to the next recursion. The empty list 
+                    is represented by [] and usually signifies the boundary condition 
+                    for a recursion.</p>
+                  <p>So, for example, when <b>swap_person/2</b> is called with 
+                    the input list [i,want,pizza], the pattern [X|Xs] is mapped 
+                    to it in a process called <b>unification</b>. X becomes i, 
+                    Xs becomes [want,pizza]. swap_word/2 will unify Y with you 
+                    and Ys will become what ever is returned by calling <b>swap_person/2</b> 
+                    with [want,pizza].</p>
+                </td>
+              </tr>
+            </table>
+            <p>The <b>swap_word/2</b> rules look in the knowledge base portion 
+              of the program to see if the word is one mentioned in the <b>me_you/2</b> 
+              relation. If its not, the word is replaced with itself.</p>
+            <blockquote> 
+              <pre><font color="#000099">swap_word(X,Y) :- me_you(X,Y).
+swap_word(X,Y) :- me_you(Y,X).
+swap_word(W,W).</font>
+</pre>
+            </blockquote>
+            <p>One last bit and we're ready to run. We form the response, for 
+              now, by simply adding a question mark on the end.</p>
+            <blockquote> 
+              <pre><font color="#000099">form_response(In,Out) :-
+   append(In, [?], Out).</font>
+</pre>
+            </blockquote>
+            <p><b>append/3</b> is a common list utility in Prolog that appends 
+              one list to another. In this case we're adding the list with the 
+              single element, ?, to the end of our output list of words. To use 
+              a library of common list utilities we need these two lines at the 
+              front of the program. We'll use other list utilities later as well. 
+              (If you don't have a library, the implementations of various list 
+              utility predicates can be readily found and coded directly in the 
+              program.)</p>
+            <blockquote> 
+              <pre><font color="#000099">:- load(list).
+:- import(list).</font>
+</pre>
+            </blockquote>
+            <p>We're now ready to load the program into a Prolog listener and 
+              see how it runs.</p>
+            <blockquote> 
+              <pre><font color="#000099">?- consult(chatbot).
+yes
+?- main.
+DDJ AI Expert ChatBot Sample
+> i have problems with my computer
+you have problems with your computer ?
+> yes
+yes ?
+> will you help me
+will i help you ?
+> quit
+quit ?
+yes</font>
+</pre>
+            </blockquote>
+            <p>It's already sounding like some people I know.</p>
+            <h3>Adding Response Patterns</h3>
+            <p>The &quot;intelligence&quot; of a chat bot lies in the patterns 
+              it is told to recognize. Lists of words and variables can represent 
+              a pattern to look for, and lists that have those same variables 
+              in them can be used for various possible responses.</p>
+            <table width="100%" border="1" cellpadding="10" bordercolor="#000099" bgcolor="#DFFFFF">
+              <tr> 
+                <td>There are two types of logical variables in Prolog. Named 
+                  ones, beginning with an upper case letter, and anonymous ones, 
+                  represented by an underscore. The named variables can be used 
+                  to echo parts of the input back, and anonymous ones for indicating 
+                  we don't care about parts of the input.</td>
+              </tr>
+            </table>
+            <p>Here's two responses for any input that has the adjacent words 
+              &quot;blue screen&quot; in it.</p>
+            <blockquote> 
+              <pre><font color="#000099">response( [_,blue,screen,_],
+  [ [why,do,you,use,windows,?],
+    [wipe,your,computer,clean,and,install,linux,'.'] ]).</font>
+</pre>
+            </blockquote>
+            <p>Here's a response pattern for any input with the word &quot;linux&quot; 
+              in it.</p>
+            <blockquote> 
+              <pre><font color="#000099">response( [_,linux,_],
+  [ [nobody,supports,linux,'.'] ]).</font>
+</pre>
+            </blockquote>
+            <p>That should drive them nuts.</p>
+            <p>Here's a few more response patterns that might come in handy to 
+              keep the conversation going. The last one is a catch all that is 
+              used if none of the other patterns match. It does the job of echoing 
+              the input with a question mark. Remember that the input word lists 
+              have already had the pronouns swapped before they are used in these 
+              patterns.</p>
+            <blockquote> 
+              <pre><font color="#000099">response( [yes,_],
+  [ [why,?] ]).
+response( [no,_],
+  [ [why,not,?] ]).
+response( [_,you,like,X],
+  [ [how,can,you,like,X,?],
+    [is,it,strange,to,like,X,?] ]).
+response( [_,want,to,X],<br>  [ [why,would,you,want,to,X,?],<br>    [you,can,not,X,'.'],<br>    [is,it,dangerous,to,X,?] ]).<br>response( [X],
+  [ [X,?] ]).</font>
+</pre>
+            </blockquote>
+            <table width="100%" border="1" cellpadding="10" bordercolor="#000099" bgcolor="#DFFFFF">
+              <tr> 
+                <td>When a named variable appears multiple times in a rule, like 
+                  X in the above patterns gets a value, all occurances of X automatically 
+                  have the same value. So when the pattern matcher we will write 
+                  determines a value of X from the input pattern, then that value 
+                  will be echoed in the output patterns.</td>
+              </tr>
+            </table>
+            <p>Before looking at the code, here's how these response rules will 
+              drive a dialog with the chat bot.</p>
+            <blockquote> 
+              <pre><font color="#000099">?- main.
+DDJ AI Expert ChatBot Sample
+> i get a blue screen on my computer
+wipe your computer clean and install linux .
+> ok, i did that but now i cannot get linux to work.
+nobody supports linux .</font>
+</pre>
+            </blockquote>
+            <p>When there are multiple response patterns to pick from, the engine 
+              will pick one at random. Here's another run with the same rules, 
+              but a different result.</p>
+            <blockquote> 
+              <pre>
+<font color="#000099">> i get a blue screen on my computer
+why do you use windows ?
+> i like the windows operating system
+is it strange to like the windows operating system ?
+> no
+why not ?
+> lots of people like windows
+lots of people like windows ?
+> yes
+why ?
+> it is easy to use
+it is easy to use ?</font>
+</pre>
+            </blockquote>
+            <p><b>The Response Pattern Matcher</b></p>
+            <p>The tricky part of the pattern matcher is setting a variable to 
+              possibly multiple words in the input. For example, in the response 
+              pattern [_,want,to,X] X might match a phrase. That phrase is best 
+              represented as a list of words as well, so we will have an output 
+              list with embedded lists in it. A list utility, <b>flatten/2</b>, 
+              will fix that problem.</p>
+            <p>For example if the input is [i,want,to,learn,to,fly] X will be 
+              bound to [learn,to,fly] and the outputs will look like [why,would,you,want,to,[learn,to,fly]]. 
+              <b>flatten/2</b> converts that to [why,would,you,want,to,learn,to,fly].</p>
+            <p>Here is a new version of <b>form_response/2</b> that uses the <b>response/2</b> 
+              rules in the knowledge base portion of the application.</p>
+            <blockquote> 
+              <pre><font color="#000099">form_response(Input,Response) :-
+   response(InputPattern, ResponsePatterns),
+   match(InputPattern, Input),
+   random_elem(ResponsePatterns, ResponsePattern),
+   flatten(ResponsePattern, Response).</font>
+</pre>
+            </blockquote>
+            <table width="100%" border="1" cellpadding="10" bordercolor="#000099" bgcolor="#DFFFFF">
+              <tr> 
+                <td>This rule makes use of Prolog automatic backtracking search 
+                  to find the right response rule. It first picks a <b>response/2</b> 
+                  and then uses <b>match/2</b> to see if its pattern matches the 
+                  input. If it doesn't, then Prolog backtracks and tries the next 
+                  <b>response/2</b> rule. When it finds one that matches, it picks 
+                  one of the possible response outputs, flattens the list and 
+                  returns the response.</td>
+              </tr>
+            </table>
+            <p>Here's the recursive rules that try to match the input word list 
+              with a pattern in one of the response rules. It will be called with 
+              the input pattern from a rule and its job will be to see if that 
+              pattern can be matched with the user's input. Further, if there 
+              are variables in the input pattern, then the binding for those variables 
+              will be determined as well.</p>
+            <p>There are two boundary conditions.</p>
+            <ul>
+              <li>One is when the the word list for the input pattern is empty, 
+                meaning the pattern matcher succeeded.</li>
+              <li>The other is when the only element left in the input pattern 
+                is a variable, in which case the pattern also succeeds and the 
+                variable is bound to whatever is left in the user input.</li>
+            </ul>
+            <p>There are two recursive cases.</p>
+            <ul>
+              <li>When the next element in the input pattern list is a variable, 
+                a separate predicate is called to gather words from the user input 
+                up until the next specific word in the input pattern is encountered.</li>
+              <li>When the next element is a specific word, then if it matches 
+                the user input, recursion continues.</li>
+            </ul>
+            If the input doesn't match, none of the four <b>match/2</b> rules 
+            will succeed and the call to <b>match/2</b> fails, triggering backtracking 
+            search for another <b>response/2</b>. 
+            <blockquote> 
+              <pre><font color="#000099">match([], []).
+match([Xs], IWs) :-
+   var(Xs),
+   !,
+   Xs = IWs.
+match([Xs,W|PWs], IWs) :-
+   var(Xs),
+   !,
+   fill_var(Xs, W, IWs, IWsLeft),
+   match([W|PWs], IWsLeft).
+match([W|PWs], [W|IWs]) :-
+   !,
+   match(PWs, IWs).</font></pre>
+            </blockquote>
+            <p><b>fill_var/4</b> is another recursive predicate that walks the 
+              input list looking for the first occurance of a word that matches 
+              the word after the variable. It has four arguments:</p>
+            <ul>
+              <li>the output list of words, returned to caller;</li>
+              <li>the next word in the input pattern that cause recursion to stop 
+                when its found;</li>
+              <li>the user input list being walked, looking for the stop word;</li>
+              <li>the remainder of the input list, returned for the caller for 
+                further processing.</li>
+            </ul>
+            <blockquote> 
+              <pre><font color="#000099">fill_var([], W, [W|IWs], [W|IWs]) :-
+   !.
+fill_var([X|Xs], W, [X|IWs], IWsLeft) :-
+   fill_var(Xs, W, IWs, IWsLeft).</font></pre>
+            </blockquote>
+            <p>It is easy in Prolog to test individual predicates such as this 
+              one. When the program is loaded in a Prolog listener, any of the 
+              predicates can be queried directly. </p>
+            <blockquote> 
+              <pre><font color="#000099">?- match([a,b,c], [a,b,c]).
+yes
+
+?- match([a,X,d], [a,b,c,d]).
+X = [b, c] 
+yes
+
+?- match([_,like,X], [you,like,to,fly,planes]).
+X = [to, fly, planes] 
+yes
+
+?- match([_,like,X], [you,want,to,fly,planes]).
+no
+
+?- match([a,b,c], [a,r,c]).
+no</font>
+</pre>
+            </blockquote>
+            <p>If you are new to Prolog, the best way to learn to understand code 
+              like this is to run it in a debugger, which will provide a trace 
+              of Prolog execution and variable bindings. Here is a trace of <b>form_response/2</b> 
+              from one type of Prolog debugger.</p>
+            <blockquote> 
+              <pre><font color="#000099">
+DDJ AI Expert ChatBot Sample
+> i like pizza
+'CALL':user:form_response([you, like, pizza], H132)
+ 'CALL':user:response(H321, H322)
+ 'EXIT':user:response([H388, blue, screen, H394], 
+        [[why, do, you, use, windows, ?], 
+        [wipe, your, computer, clean, and, install, linux, .]])
+ 'CALL':user:match([H388, blue, screen, H394], [you, like, pizza])
+ 'FAIL':user:match([H388, blue, screen, H394], [you, like, pizza])
+ 
+ 'REDO':user:response([H388, blue, screen, H394], 
+        [[why, do, you, use, windows, ?], 
+        [wipe, your, computer, clean, and, install, linux, .]])
+ 'EXIT':user:response([yes, H390], [[why, ?]])
+ 'CALL':user:match([yes, H390], [you, like, pizza])
+ 'FAIL':user:match([yes, H390], [you, like, pizza])
+ 
+ 'REDO':user:response([yes, H390], [[why, ?]])
+ 'EXIT':user:response([no, H390], [[why, not, ?]])
+ 'CALL':user:match([no, H390], [you, like, pizza])
+ 'FAIL':user:match([no, H390], [you, like, pizza])
+ 
+ 'REDO':user:response([no, H390], [[why, not, ?]])
+ 'EXIT':user:response([H388, you, like, H394], 
+        [[how, can, you, like, H394, ?], 
+        [is, it, strange, to, like, H394, ?]])
+ 'CALL':user:match([H388, you, like, H394], [you, like, pizza])
+ 'EXIT':user:match(['[]', you, like, [pizza]], [you, like, pizza])
+ 'CALL':user:random_elem([[how, can, you, like, [pizza], ?], 
+        [is, it, strange, to, like, [pizza], ?]], H348)
+ 'EXIT':user:random_elem([[how, can, you, like, [pizza], ?], 
+        [is, it, strange, to, like, [pizza], ?]], 
+        [how, can, you, like, [pizza], ?])
+ 'CALL':user:flatten([how, can, you, like, [pizza], ?], H132)
+ 'EXIT':user:flatten([how, can, you, like, [pizza], ?], 
+        [how, can, you, like, pizza, ?])
+'EXIT':user:form_response([you, like, pizza], 
+       [how, can, you, like, pizza, ?])
+how can you like pizza ?
+></font> </pre>
+            </blockquote>
+            <p>This trace illustrates that the rules are tried in the order they 
+              appear. So if a user input might match multiple response patterns, 
+              the first one will have priority.</p>
+            <p>At this point, all the code is here that is needed to run the program 
+              and get the results displayed a few paragraphs back.</p>
+            <h3>Enhancements</h3>
+            <p>There are a number of enhancements that can be made to the sample.</p>
+            <p>Implement better formatting of input and output strings.</p>
+            <p>Put the knowledge in a separate file, so different sets of pattern 
+              matching rules can be used. Let the user can pick from a menu of 
+              rule files.</p>
+            <p>Indexing of response rules by key words in the patterns can be 
+              added. So for example, rules that match the word 'can' might be 
+              indexed on 'can'. This can be used for greater efficiency if a very 
+              large number of patterns are coded, and it can be used to easily 
+              let one pattern refer to another for completion.</p>
+            <p>Memory of past variable bindings can be kept and popped back in 
+              from time to time. So we might remember the user liked pizza and 
+              if nothing else matches, have a response that uses the memory to 
+              ask a question about pizza.</p>
+            <p>Add facts similar to the <b>me_you/2</b> facts that can be used 
+              to map a variety of input words into a single word used for pattern 
+              matching. For example, 'need' might map to 'want' so the rules matching 
+              'want' will also work if the user types 'need'. Also it would be 
+              nice if the these facts used lists of words, rather than being restricted 
+              to single words.</p>
+            <p>And of course creating more and more response patterns to make 
+              the chat bot more interesting.</p>
+            <h2><a name="ontology"></a>Ontology</h2>
+            <p>Tools for ontologies are easy to create and play with in Prolog. 
+              As always, first a knowledge representation for the ontology is 
+              determined, and then tools to use it are developed.</p>
+            <h3>Knowledge Representation</h3>
+            <p>The entries for the ontology can be stored as property lists, where 
+              each word has a property list associated with it. A property list 
+              is just a list whose elements are Property = Value. Using this idea 
+              for representing ontological knowledge, here's some entries we might 
+              want to support an application about food.</p>
+            <blockquote> 
+              <pre><font color="#000099">word(pizza, [
+  kind_of = food,
+  contains = cheese,
+  contains = tomato ]).
+word(broccoli, [
+  kind_of = food,
+  color = green ]).
+word(donut, [
+  kind_of = food,
+  contains = sugar ]).
+word(spaghetti_sauce, [
+  kind_of = food,
+  contains = tomato ]).</font>
+</pre>
+            </blockquote>
+            <p>Here's some more entries about people and allergies.</p>
+            <blockquote> 
+              <pre><font color="#000099">word(joe, [
+  instance_of = person,
+  allergy = tomato ]).
+word(jill, [
+  instance_of = person,
+  allergy = cheese ]).</font>
+</pre>
+            </blockquote>
+            <h3>Reasoning Engine</h3>
+            <p>Now, armed with typical list utilities we can write a predicate 
+              that can answer questions about the properties of words in our ontology.</p>
+            <blockquote> 
+              <pre><font color="#000099">property(Word, Property, Value) :-
+   word(Word, PropertyList),
+   member(Property = Value, PropertyList).</font>
+</pre>
+            </blockquote>
+            <table width="100%" border="1" cellpadding="10" bordercolor="#000099" bgcolor="#DFFFFF">
+              <tr> 
+                <td>Because Prolog is just matching patterns itself, the <b>property/3</b> 
+                  predicate works no matter which variables are bound. So it can 
+                  find properties of a particular word, or words with a particular 
+                  property.</td>
+              </tr>
+            </table>
+            <p>Here's some things we can do with <b>property/3</b> in the listener. 
+              (The semicolon tells Prolog to look for another solution, so in 
+              these queries we find all solutions.)</p>
+            <blockquote> 
+              <pre><font color="#000099">?- property(pizza, contains, X).
+X = cheese ;
+X = tomato ;
+no
+
+?- property(X, kind_of, food).
+X = pizza ;
+X = broccoli ;
+X = donut ;
+X = spaghetti_sauce ;
+no
+
+?- property(X, kind_of, food), property(X, color, green).
+X = broccoli ;
+no
+
+?- findall(X, property(pizza, contains, X), L).
+X = H19
+L = [cheese, tomato] 
+yes</font>
+</pre>
+            </blockquote>
+            <h3>Applications of the Ontology</h3>
+            <p>The ontology we developed can be used to support other applications. 
+              The types of information we stored in the small sample can be used, 
+              for example, in an expert system that warns people about what foods 
+              they can and cannot eat based on allergies.</p>
+            <p>The rules of that expert system might be written directly in Prolog. 
+              Each of these rules finds a person word and a food word and compares 
+              the allergy of the person with what the food contains.</p>
+            <blockquote> 
+              <pre><font color="#000099">can_eat(Person, Food) :-
+  property(Person, instance_of, person),
+  property(Person, allergy, Allergy),
+  property(Food, kind_of, food),
+  not property(Food, contains, Allergy).
+
+cannot_eat(Person, Food) :-
+  property(Person, instance_of, person),
+  property(Person, allergy, Allergy),
+  property(Food, kind_of, food),
+  property(Food, contains, Allergy).</font>
+</pre>
+            </blockquote>
+            <p>Note that the ontology has changed the knowledge engineering task 
+              for this allergy expert system. Without the ontology, the knowledge 
+              would all be stored in the rules. With the ontology, the rules become 
+              simple general purpose rules and the knowledge is stored in the 
+              ontology.</p>
+            <p>Here's how these two rules can be used.</p>
+            <blockquote> 
+              <pre><font color="#000099">?- can_eat(joe, pizza).
+no
+
+?- can_eat(joe, donut).
+yes
+
+?- can_eat(joe, X).
+X = broccoli ;
+X = donut ;
+no
+
+?- cannot_eat(joe, X).
+X = pizza ;
+X = spaghetti_sauce ;
+no
+
+?- can_eat(X, broccoli).
+X = joe ;
+X = jill ;
+no</font>
+</pre>
+            </blockquote>
+            <h3>Transitivity</h3>
+            <p>Transitivity is an easy enhancement to add to the ontology engine. 
+              Transitivity applies for certain properties, such as <b>kind_of</b>. 
+              It means that if X <b>kind_of</b> Y and Y <b>kind_of</b> Z then 
+              X <b>kind_of</b> Z. We can define certain properties as transitive 
+              by specifying it in the knowledge base.</p>
+            <blockquote> 
+              <pre><font color="#000099">transitive(kind_of).
+transitive(contains).</font>
+</pre>
+            </blockquote>
+            <p>Now if we're looking for a value for a property that is transitive, 
+              our engine can recursively call itself.</p>
+            <blockquote> 
+              <pre><font color="#000099">property(Word, Property, Value) :-
+   word(Word, PropertyList),
+   member(Property = Value, PropertyList).
+property(Word, Property, Value) :-
+   transitive(Property),
+   word(Word, PropertyList),
+   member(Property = Word2, PropertyList),
+   property(Word2, Property, Value).</font>
+</pre>
+            </blockquote>
+            <p>To test it make one small change to the ontology, have pizza contain 
+              spaghetti_sauce instead of tomato.</p>
+            <blockquote> 
+              <pre><font color="#000099">word(pizza, [
+  kind_of = food,
+  contains = cheese,
+  contains = spaghetti_sauce ]).</font>
+</pre>
+            </blockquote>
+            <p> The test will be to see if joe is still not allowed to eat pizza, 
+              as the pizza does not directly contain tomato.</p>
+            <blockquote> 
+              <pre><font color="#000099">?- property(pizza, contains, X).
+X = cheese ;
+X = spaghetti_sauce ;
+X = tomato ;
+no
+
+?- can_eat(joe, pizza).
+no
+
+?- cannot_eat(joe, pizza).
+yes</font>
+</pre>
+            </blockquote>
+            <h2><a name="chat_bot_ontology"></a>Chat Bot with Ontology</h2>
+            <p>We can use the ontology we developed to add more intelligence to 
+              the patterns in the chat bot rules. In particular we can specify 
+              properties to include in the pattern match. Here's a pattern that 
+              recognizes when the user is talking about food.</p>
+            <blockquote> 
+              <pre><font color="#000099">response( [_,property(W,kind_of,food),_],
+  [ [are,you,talking,about,W,because,you,are,hungry,'?'],
+    [when,did,you,last,eat,W,'?'] ]).</font>
+</pre>
+            </blockquote>
+            <p>And here's some to add to the annoying behavior of our technical 
+              support.</p>
+            <blockquote> 
+              <pre><font color="#000099">response( [_,property(W,kind_of,windows),_],
+  [ [you,should,dump,W,and,switch,to,unix,'.'] ]).
+response( [_,property(W,kind_of,unix),_],
+  [ [you,should,dump,W,and,switch,to,windows,'.'] ]).</font>
+</pre>
+            </blockquote>
+            <p>These last two require the addition of some more information in 
+              the ontology.</p>
+            <blockquote> 
+              <pre><font color="#000099">word(windows, [
+  kind_of = operating_system ]).
+word(unix, [
+  kind_of = operating_system ]).
+word(xp, [
+  kind_of = windows ]).
+word(w2000, [
+  kind_of = windows ]).
+word(linux, [
+  kind_of = unix ]).</font>
+</pre>
+            </blockquote>
+            <p>And we have to make some small changes to the basic pattern matcher 
+              to recognize and handle these property patterns in the rules. The 
+              new clauses are indicated in red.</p>
+            <blockquote> 
+              <pre><font color="#000099">match([], []).
+match([Xs], IWs) :-
+   var(Xs),
+   !,
+   Xs = IWs.
+match([Xs,W|PWs], IWs) :-
+   var(Xs),
+   !,
+   fill_var(Xs, W, IWs, IWsLeft),
+   match([W|PWs], IWsLeft).
+<font color="#CC0000">match([property(W,P,V)|PWs], [W|IWs]) :-
+   property(W,P,V),
+   !,
+   match(PWs,IWs).</font>
+match([W|PWs], [W|IWs]) :-
+   !,
+   match(PWs, IWs).
+
+fill_var([], W, [W|IWs], [W|IWs]) :-
+   !.
+<font color="#CC0000">fill_var([], property(W,P,V), [W|IWs], [W|IWs]) :-
+   property(W,P,V),
+   !.</font>
+fill_var([X|Xs], W, [X|IWs], IWsLeft) :-
+   fill_var(Xs, W, IWs, IWsLeft).</font>
+</pre>
+            </blockquote>
+            <p>Trying the new pattern rules we get a dialog like this.</p>
+            <blockquote> 
+              <pre><font color="#000099">?- main.
+DDJ AI Expert ChatBot Sample
+> i have problmes with xp
+you should dump xp and switch to unix .
+> ok i just installed linux
+you should dump linux and switch to windows .
+> you are going in circles
+i am going in circles ?
+> do you wnat to get a pizza
+when did you last eat pizza ?
+> yesterday
+yesterday ?
+> yes i ate pizza yesterday
+are you talking about pizza because you are hungry ?</font>
+</pre>
+            </blockquote>
+<p>&nbsp; </p>
+
+
+<hr>
+            <h2> <a name="drug_interaction"></a>A Drug Interaction Prototype</h2>
+            <p>Last month we looked at a simple prototype for a rule-based system 
+              that dealt with pricing and similar problems. This month we've got 
+              a real world example of a drug interaction system (DIS) to work 
+              with. We'll use it as a case study in designing a knowledge representation 
+              language and reasoning engine for a specific type of application.</p>
+            <p>The example illustrates many of the issues with knowledge-based 
+              systems, in that there are different types of knowledge that need 
+              to be represented and used. Those needed for DIS are different from 
+              those needed for the pricing example used last month.</p>
+            <p>For DIS, the goal is to come up with a system that can use general 
+              principles of drug interaction to predict interactions of drugs 
+              that haven't been tested together. The source material was provided 
+              by Dr. Thomas Brown, author of Psychiatric Side Effects of Prescription 
+              and Over-the-Counter Medications, Second Edition (Washington DC, 
+              American Psychiatric Press, Inc, in press), who is an expert in 
+              neurological drug interactions.</p>
+            <h3>The Knowledge</h3>
+            <p>The first step is to start with a self-contained example. In this 
+              case it is the potentially deadly serotonin syndrome. Serotonin 
+              is a normal chemical messenger created by the cells in the body, 
+              but when the mechanism for the creation and/or use of serotonin 
+              is altered, problems can occur.</p>
+            <p>The serotonin syndrome is a drug side-effect that occurs when two 
+              conditions are met:</p>
+            <ul>
+              <li> there is an increase in the amount of serotonin outside the 
+                cells, and</li>
+              <li>either:</li>
+              <ul>
+                <li>an impairment in the body's ability to get rid of serotonin, 
+                  or</li>
+                <li>an aberration in the body's response to serotonin.</li>
+              </ul>
+            </ul>
+            <p>This is the basis for a &quot;first principles&quot; type system. 
+              Once we encode this knowledge, then the problem of predicting a 
+              drug interaction becomes one of determining if a combination of 
+              drugs or medical conditions causes the conditions leading to the 
+              serotonin syndrome.</p>
+            <p>Amphetamine, dextromethorphan, and alcohol are examples of agents 
+              that stimulate the release of serotonin. Citalopram, paroxetine, 
+              diabetes and St. John's wort all inhibit the body's ability to reabsorb 
+              serotonin. Buspirone stimulates the activity of serotonin once released.</p>
+            <p>Because the system will be designed to find all possible drug interactions, 
+              I've added a bit of first principles knowledge from my own research 
+              in neurological drugs. This will be used to test if the system finds 
+              all the information required.</p>
+            <p>That rule is a person becomes inebriated if the blood alcohol level 
+              increases, and that the blood alcohol level increases when a person 
+              consumes alcohol.</p>
+            <p>The prototype uses some concepts developed in last month's newsletter 
+              and adds some new ones for this particular problem. The code examples 
+              use Prolog, but any language can be used to implement the concepts 
+              presented.</p>
+            <p>Unlike with previous issues of the newsletter, the full code is 
+              not contained in the newsletter, just the significant bits, and 
+              the bits that weren't covered in other newsletters. Contact me if 
+              you are interested in receiving the full source code for the prototype.</p>
+            <h3>Frame Based</h3>
+            <p>A frame-based knowledge representation is convenient and can, at 
+              a later time, be easily mapped to a GUI development environment.</p>
+            <pre>rule('blood alcohol', [
+   value :: increased,
+   conditions ::
+      consumed = alcohol
+   ]).
+</pre>
+            <p>A frame is a general purpose knowledge structure that is composed 
+              of 'slots' where a slot is really just an attribute and a value. 
+              In the text form of a DIS frame a :: operator separates a slot from 
+              its value.</p>
+            <p>In a minor change from last month's rules, the name of the rule 
+              is now the name of an attribute, and the slot 'value' has the value 
+              of the attribute.</p>
+            <p>The example frame is for a rule about 'blood alcohol' and the two 
+              slots provide a value for 'blood alcohol' and the conditions under 
+              which that value is true. In customizing our system we can have 
+              any types of frames we want with any types of slots. </p>
+            <p>One can easily imagine a dialog box in a GUI with input fields 
+              for the various slots. That GUI would create the text file form 
+              shown above. But that's a future project, for now knowledge will 
+              be hand-coded into structures like the one above.</p>
+            <h3>Ontology Important</h3>
+            <p>Based on the preliminary documents it appears that a tremendous 
+              amount of the knowledge is really semantic, and semantic information 
+              is best stored in frames that are intended to be used as an ontology.</p>
+            <pre>word(alcohol, [
+   a_kind_of :: agent,
+   stimulates :: 'serotonin release'
+   ]).
+word(gin, [
+   contains :: alcohol
+   ]).
+word(martini, [
+   contains :: gin,
+   contains :: vermouth
+   ]).
+</pre>
+            <p>Note that our ontology for this application has more substance 
+              in it, with entries such as 'stimulates' added where appropriate. 
+              This will let us encode rules that have as a condition, for example: 
+              <i>stimulates serotonin release</i>, that will fire when the fact 
+              that a person consumed a martini is entered. This is because the 
+              reasoning engine is designed to understand the ontology and trace 
+              the relationships, in this case that a martini contains gin and 
+              gin contains alcohol and alcohol stimulates serotonin release.</p>
+            <h3>Rules</h3>
+            <p>The frames for rules simply specify the value for a factor and 
+              the conditions under which that value is appropriate. This gives 
+              us the flexibility to use the rules in a variety of reasoning strategies.</p>
+            <pre>Rule(inebriated, [
+   value :: true,
+   conditions ::
+      'blood alcohol' increased,
+   explanation :: [
+      `When alcohol content in blood increases, person gets drunk.`],
+   citation :: `Oct 2003 observations of Dennis Merritt`
+   ]).
+
+rule('blood alcohol', [
+   value :: increased,
+   conditions ::
+      consumed = alcohol
+   ]).</pre>
+            <p>These two rules state that the state inebriated is true if blood 
+              alcohol is increased and that blood alcohol is increased if alcohol 
+              was consumed.</p>
+            <p>Note that we've defined 'increased' as an operator that can appear 
+              after a value, which allows for more natural writing of rules with 
+              a condition like 'blood alcohol' increased, rather than 'blood alcohol' 
+              = increased.</p>
+            <p>The frame structures allow us to add other fields to use as we 
+              will. In this case a textual explanation of the rule and a citation 
+              is provided that might be used in explanations. These could be displayed 
+              by the reasoning engine when this rule takes effect, or just used 
+              as documentation during development.</p>
+            <h3>Boolean Values</h3>
+            <p>Version 0-0 of DIS assumes the world is black and white. Either 
+              blood alcohol is increased or it isn't, a person is inebriated or 
+              not. In the real system there will have to be some way to represent 
+              the shades of gray in the world. There are a number of choices and 
+              we need to decide on the best one.</p>
+            <p>Certainty factors (CF) are easy to implement and have a nice intuitive 
+              feel, but are not based on any mathematical theories.</p>
+            <p>Fuzzy logic seems like it would work well for some the knowledge. 
+              For example, fuzzy values map very nicely to words in the knowledge 
+              like &quot;increased&quot; above. The use of fuzzy values requires 
+              the development of small mathematical models that can be used to 
+              determine the relationship, for example, between consumed alcohol 
+              and blood alcohol, as well as the relationship between blood alcohol 
+              and inebriation.</p>
+            <p>But fuzzy logic doesn't capture other parts of the knowledge, in 
+              particular the desire to know if the serotonin syndrome is likely 
+              or not. In that case we really want more of a probability than a 
+              fuzzy value.</p>
+            <p>Bayesian probability is based on sound mathematics and seems like 
+              a good fit for representing the probabilities of various drug interactions.</p>
+            <p>But, stepping back, Bayesian probability doesn't capture the essence 
+              of the concept of inebriation. Increasing the consumption of alcohol 
+              doesn't increase the probability of inebriation, but rather increases 
+              the degree of inebriation.</p>
+            <p>Maybe some combination of fuzzy models and Bayesian probability 
+              is best? I'm not sure.</p>
+            <p>But for version 0-0 the world is black and white. You consume a 
+              martini, you're drunk; you have the conditions that trigger serotonin 
+              syndrome, you have serotonin syndrome. </p>
+            <h3>Reasoning Engine</h3>
+            <p>The first cut at the reasoning engine assumes that in the real 
+              world this system will work off data for a given individual. In 
+              other words, the data will be known and the system will output what 
+              conclusions might be drawn from that data.</p>
+            <p>So a data-driven approach was used. The system is started with 
+              initial data, and then the various rules are tried until none fit 
+              anymore. The system then reports on everything it knows.</p>
+            <p>So if the system started with the data (the square brackets means 
+              a list and there could be more things consumed):</p>
+            <pre>consumed = [martini]</pre>
+            <p>then it would output all of the derived information as well as 
+              the initial information.</p>
+            <pre>inebriated = true
+'blood alcohol' = increased
+'extra cellular serotonin' = increased
+consumed = [martini]
+</pre>
+            <p>A data-driven reasoning engine was used in version 0-0, but I'm 
+              not sure it really captures the essence of the problem. Data-driven 
+              (forward chaining) is very good for synthesizing solutions where 
+              there are seemingly infinite possibilities, such as in a configuration 
+              or planning system. In this case there is only a finite number of 
+              known outputs and probably a better reasoning strategy is one that 
+              simply walked a list of all solutions using each as a goal in a 
+              goal-driven approach, similar to what was used in last month's pricing 
+              example.</p>
+            <p>But version 0-0 started with data-driven approach and here is the 
+              code that implements it:</p>
+            <pre>figure_all :-
+   rule(Name, Attrs),
+   not(used(Name)),
+   get_slot(conditions, C, Attrs),
+   prove(C),
+   get_slot(value, V, Attrs),
+   asserta(known(Name, V)),
+   asserta(used(Name)),
+   !,
+   figure_all.
+figure_all.
+</pre>
+            <p>This is a simple forward-chainer that is not very efficient, but 
+              gets the job done for the prototype. It finds a rule that has not 
+              been used yet, and tries to prove the conditions. If it can prove 
+              the conditions, then the value in the rule is asserted as the value 
+              for the name of the rule and the rule is noted as having been used. 
+              The loop is then recursively started again.</p>
+            <p>If the conditions can't be proved, then the next rule is tried.</p>
+            <p>This simple strategy ensures that all the rules that can fire, 
+              will. And that rules that depend on other rules will simply wait 
+              until they have the conditions necessary to fire. The predicates 
+              <b>get_slot/3</b> and <b>prove/1</b> were covered in last month's 
+              newsletter. But we've added some conditions for <b>prove/1</b> that 
+              allows the rules to use the terms 'increased', 'impaired' and 'aberrated' 
+              as operators which makes for more readable rules.</p>
+            <pre>...
+prove(increased(X)) :-
+   known(X, increased),
+   !.
+prove(impaired(X)) :-
+   known(X, impaired),
+   !.
+prove(aberrated(X)) :-
+   known(X, aberrated),
+   !.
+...
+</pre>
+            <h3>General Pattern Rules</h3>
+            <p>Moving onto the real rules, the idea behind the system is to encode 
+              general patterns that might trigger even for unknown combinations 
+              of drugs. This suggests that the idea of logical, pattern-matching 
+              variables, might be useful in the rules.</p>
+            <pre>Rule('serotonin syndrome', [
+   value :: true,
+   conditions ::
+      'extra cellular serotonin' increased and
+      ( 'serotonin removal' impaired or
+        'serotonin response' aberrated ),
+   explanation :: [
+      `Serotonin syndrome results when two conditions are`,
+      `met: an increase in extra cellular serotonin and either`,
+      `an impaired or aberrated ability to deal with the extra`,
+      `serotonin.`],
+   Citation :: `Oct 2003 private communication with Dr. Thomas Brown`
+   ]).
+
+rule('extra cellular serotonin', [
+   value :: increased,
+   conditions ::
+      X stimulates 'serotonin release' and (consumed = X or condition = X)
+   ]).
+
+rule('serotonin removal', [
+   value :: impaired,
+   conditions ::
+       X inhibits 'reuptake of serotonin' and (consumed = X or condition = X)
+   ]).
+
+rule('serotonin response', [
+   value :: aberrated,
+   conditions ::
+      X stimulates 'serotonin activity' and (consumed = X or condition = X)
+   ]).
+</pre>
+            <p>Here we have a general rule for the serotonin syndrome and three 
+              rules that are used by it. Each of those is using the ontology to 
+              look for the sorts of things that might cause trouble. The logical 
+              variable lets us express the idea, as in the last rule, that <i>if 
+              there's an X that stimulates serotonin activity and X was consumed 
+              or X is a condition the person has, then the serotonin response 
+              is aberrated</i>.</p>
+            <p>Here are some additional ontology entries used in the following 
+              examples.</p>
+            <pre>Word('NyQuil(tm)', [
+   contains :: alcohol
+   ]).
+word('Effexor(TM)', [
+   a_kind_of :: venlafaxine
+   ]).
+word(venlafaxine, [
+   a_kind_of :: agent,
+   inhibits :: 'reuptake of serotonin'
+   ]).
+word(diabetes, [
+   a_kind_of :: condition,
+   inhibits :: 'reuptake of serotonin'
+   ]).
+</pre>
+            <p>So if we start the system with the data:</p>
+            <pre>consumed = ['NyQuil(TM)']
+condition = diabetes</pre>
+            <p>we get the following derived results.</p>
+            <pre>Inebriated = true
+'blood alcohol' = increased
+'serotonin syndrome' = true
+'serotonin removal' = impaired
+'extra cellular serotonin' = increased
+condition = diabetes
+consumed = ['NyQuil(TM)']
+</pre>
+            <p>Similarly if we start with</p>
+            <pre>consumed = [martini, 'Effexor(TM)']</pre>
+            <p>we get:</p>
+            <pre>inebriated = true
+'blood alcohol' = increased
+'serotonin syndrome' = true
+'serotonin removal' = impaired
+'extra cellular serotonin' = increased
+consumed = [martini, 'Effexor(TM)']
+</pre>
+            <p>There is an interesting design issue here. When logical variables 
+              are introduced into the rules, the rules become both more powerful 
+              and more difficult to use. I was talking with a language designer 
+              at IBM who indicated that as soon as you add pointers to a programming 
+              language you increase its expressive power but limit the number 
+              of programmers who can use it. Logical variables have the same effect 
+              on rule languages.</p>
+            <h3>Testing</h3>
+            <p>To facilitate testing, a file of test case data is kept. Here's 
+              two test cases used above:</p>
+            <pre>test(5, [
+   consumed :: [martini, 'Effexor(TM)']
+   ]).
+test(6, [
+   consumed :: ['NyQuil(TM)'],
+   condition :: diabetes
+   ]).
+</pre>
+            <h3>Custom Conditions</h3>
+            <p>As we move ahead in encoding knowledge, we'll come across various 
+              ideas we want to express. For example, the Sternbach diagnostic 
+              is a criteria that is defined as true when a patient has at least 
+              three findings from a set of eleven. So we create a syntax for expressing 
+              that idea and then making reasoning engine understand how to use 
+              it. A simple modification of prove/1 lets us now use some_of and 
+              one_of in the rules.</p>
+            <pre>Rule('Sternbach''s diagnosis', [
+   value :: true,
+   conditions ::
+      some_of(3, ['mental status change',
+         agitation, hypertension, uncoordination, myoclonus,
+         hyperreflexia, tremor, shivering, diaphoresis,
+         diarrhea, fever])
+   ]).
+
+rule('mental status change', [
+   value :: true,
+   conditions ::
+      one_of( [confusion, hypomania] )
+   ]).
+</pre>
+            <p>Testing these new rules and conditions with these inputs: </p>
+            <pre>test(4, [
+   'myoclonus' :: true,
+   'hypomania' :: true,
+   'shivering' :: true
+   ]).
+</pre>
+            <p>yields this result</p>
+            <pre>?- main.
+test? 4.
+'Sternbach''s diagnosis' = true
+'mental status change' = true
+shivering = true
+hypomania = true
+myoclonus = true
+
+yes
+</pre>
+            <h3>Next Steps</h3>
+            <p>The most critical next step for this system is to resolve the way 
+              uncertainty is dealt with. After that is done, additional examples 
+              of drug interactions knowledge can be added to this system to see 
+              what changes they may require.</p>
+<hr>
+<h2><a name="bayesian"></a>Bayesian Belief Networks</h2>
+            
+<h3>Background</h3>
+<p>It wasn't long before more rigorous types pointed out that probability theory 
+  already had all the tools necessary for propagating belief, in Bayesian theory. 
+  And it was mathematically precise, not like the ad hoc CFs.</p>
+            <p>Thrown on the defensive, the CF creators argued that there is so 
+              much uncertainty in the uncertainty estimates in an expert system 
+              that it hardly matters if they are propagated with mathematical 
+              precision. If a doctor estimates that a cough implies a cold with 
+              certainty 60, that could really be anywhere from 40 to 80.</p>
+            <p>Moving to the offensive, the CF creators noted that it was much 
+              more complex to use probability theory.</p>
+            <p>Complexity has never slowed the research community down, and a 
+              wealth of work has been done on Bayesian belief networks (BBNs). 
+              These use rigorous mathematics to propagate belief (probabilities) 
+              between connected nodes in a network.</p>
+            <p>Using a BBN, the cough/cold example would be represented: P(cough, 
+              0.7), P(cold | cough, 0.6). The first is just the probability the 
+              symptom is a cough. The second is the conditional probability that 
+              the disease is a cold given the symptom cough. </p>
+            <p>But, it would also be necessary to include P(not cough, 0.3) and 
+              P(cold | not cough, 0.2) for the formulas to be used to accurately 
+              determine P(cold). That is because the probability of the patient 
+              having a cold is a combination of the probability given a cough 
+              as a symptom and the probability of having a cold if not cough is 
+              a symptom.</p>
+            <p>And if the node describing the conditional probability of a cold, 
+              given a cough, were to be connected to other nodes, then we would 
+              also need to specify P(not cold|cough) and P(not cold|not cough).</p>
+            <p>It is this requirement for a matrix of conditional probabilities 
+              that adds overhead to the development of BBNs.</p>
+            <p>But, the potential of a BBN is fantastic. All the factors in a 
+              particular problem domain can be connected together in dependency 
+              networks, with the conditional probabilities at each node specified 
+              as above. Then, as evidence about a situation is gathered, that 
+              evidence, which itself is expressed as a probability, can be propagated 
+              through the entire belief network, updating the beliefs of all the 
+              other nodes.</p>
+            <p>This means propagating both backwards and forwards, which is where 
+              the real power of Bayes' theorem comes to bear. It states that one 
+              can compute the P(A|B) from P(B|A) by the formula:</p>
+            <pre>P(A|B) = P(B|A) * P(A) / P(B).</pre>
+            <p>This equation has another very important implication. It overcomes 
+              the CF creator's objection that estimates of uncertainty are themselves 
+              extremely uncertain. Consider the cough/cold example.</p>
+            <p>It is difficult to determine the probability that someone has a 
+              cold given they have a cough. A doctor will go by feel, indicating 
+              a cold is likely if the patient has a cough.</p>
+            <p>But, it is easy to measure exactly how many patients that visit 
+              the doctor have colds, how many have the symptoms of a cough, and, 
+              most important, how many who have colds have a cough.</p>
+            <p>That is, whereas determining P(cold|cough) is hard, we can use 
+              statistics to exactly determine P(cough|cold).</p>
+            <p>Armed with Bayes theorem, and P(cold) and P(cough) in the doctor's 
+              office, we can then precisely compute P(cold | cough) given P(cough 
+              | cold).</p>
+            <pre>P(cold | cough) = P(cough | cold) * P(cold) / P(cough).</pre>
+            <p>It is no longer necessary to estimate what &quot;likely&quot; means.</p>
+            <p>One can imagine great networks of linked conditional probabilities 
+              used to model different application domains, that react to evidence, 
+              propagating beliefs, and that is exactly what people do with Bayesian 
+              belief networks (BBNs).</p>
+            <p>There are many deployed applications using BBNs, and there are 
+              a number of commercial products available as well.</p>
+            <p>But there are technical problems, the first being that propagation 
+              is computationally too hard given a significant number of nodes 
+              -- unless you make assumptions and limitations as to the type of 
+              network you build.</p>
+            <p>The second is that it is difficult to get all of the probability 
+              data for the nodes. As the CF creators pointed out, what good is 
+              it if the data is wrong?</p>
+            <p>Researchers are working on both these areas, with learning algorithms 
+              for developing BBNs from statistical data, and better algorithms 
+              for propagating beliefs.</p>
+            <p>See the <a href="#links_bayesian">links</a> below to learn more 
+              about what can and has been done with BBNs, and where the current 
+              research is going.</p>
+
+            <h3>Code</h3>
+            <p>Prolog is a popular language for AI for a very simple reason. It 
+              has built in pattern-matching (unification) and search (backtracking) 
+              algorithms. And much of AI is exactly about pattern-matching and 
+              search -- searching for patterns in if-then rules for an inference 
+              engine; searching for patterns and moves in game playing; searching 
+              for patterns in vision and natural language application; etc. etc.</p>
+            <p>Because the programmer doesn't have to code the pattern-matching 
+              and search in a Prolog application, the code is often very concise 
+              and easy to read. Here's an example from some simple experiments 
+              with Bayes theorem and probability, where a few lines of code can 
+              be used to answer queries about the probability of various events.</p>
+            <p>A simple example relating cancer and smoking, similar to the cold/cough 
+              analysis above, came from <a href="#norman_fenton">Norman Fenton's</a> 
+              tutorial. We can write a small Prolog program that lets us play 
+              with that data and Bayes theorem.</p>
+            <p>First we represent the basic probability facts as Prolog facts:</p>
+            <pre>
+p(patient(cancer), 0.1).
+p(patient(smoker), 0.5).
+</pre>
+            <p>We then represent the conditional probabilities, using a ^ operator:</p>
+            <pre>
+cp(patient(smoker) ^ patient(cancer), 0.8).
+</pre>
+            <p>Next we write query rules that can be used to find various probabilities. 
+              There are three rules, covering the case where the probability is 
+              known, the conditional probability is known, or we can compute the 
+              conditional probability using Bayes theorem. Words beginning with 
+              upper case letters are variables in Prolog. Note that the third 
+              rule recursively calls itself to get the individual probabilities. 
+            </p>
+            <pre>
+getp(A,P) :-
+   p(A,P), !.
+getp(A^B, P) :-
+   cp(A^B, P), !.
+getp(A^B, P) :-
+   cp(B^A, Pba),
+   getp(A, Pa),
+   getp(B, Pb),
+   P is Pba * Pa / Pb.
+</pre>
+            <p> We now have a simple system for representing and querying knowledge 
+              expressed as probabilities. We can consult these facts and rules 
+              into a Prolog listener and try it:</p>
+            <pre>
+?- getp(patient(cancer), P).
+P = 0.1 
+
+?- getp(patient(smoker)^patient(cancer), P).
+P = 0.8 
+
+?- getp(patient(cancer)^patient(smoker), P).
+P = 0.16 
+</pre>
+            <p>One of the fun things about reading probability papers is they 
+              have <a href="http://www.rube-goldberg.com/html/gallery.htm">Rube 
+              Goldberg</a> like examples. Here's a more complex set of a chain 
+              of facts, probably relating to the author's vacation. This one comes 
+              from an online lecture available from <a href="#temple">Temple</a> 
+              University.</p>
+            <pre>p(bonus, 0.6).
+
+cp(money ^ bonus, 0.8).
+cp(money ^ not bonus, 0.3).
+
+cp(hawaii ^ money, 0.7).
+cp(Hawaii ^ not money, 0.1).
+
+cp(san_francisco ^ money, 0.2).
+cp(san_francisco ^ not money, 0.5).
+
+cp(wierd_people ^ san_francisco, 0.95).
+cp(wierd_people ^ not san_francisco, 0.6).
+
+cp(surfing ^ Hawaii, 0.75).
+cp(surfing ^ not Hawaii, 0.2).</pre>
+            <p>Note that in this case, except for bonus, we don't always have 
+              a direct probability that we can use to get P(A) when needed. There 
+              is another formula that can be used to compute P(A) from P(A|B) 
+              when needed.</p>
+            <p>P(A) = sum( P(A|B) * P(B) )</p>
+            <p>So in the example, if we wanted to compute P(surfing), it depends 
+              on P(Hawaii) which depends on P(money) which depends on P(bonus). 
+              We can expand our query rules to include linked probabilities like 
+              this. Prolog's recursion handles this nicely. (Prolog's findall 
+              finds all the instances and stores them in a list; we add a sum 
+              rule to add the elements in the list.)</p>
+            <p>We also need a rule to calculate not P, which probability theory 
+              says is 1 - P.</p>
+            <pre>
+getp(not A, P) :-
+   getp(A, Pn),
+   P is 1 - Pn, !.
+getp(A, P) :-
+  findall(P, (
+     cp(A ^ B, P1),
+     getp(B, P2),
+     P is P1*P2
+     ), L),
+  sum(L, P).
+
+sum(L, Sum) :-
+  sum(L, 0, Sum).
+sum([], Sum, Sum).
+sum([A|Z], Acc, Sum) :-
+  Acc2 is Acc + A,
+  !, sum(Z, Acc2, Sum).
+</pre>
+            <p>We can try this in a listener:</p>
+            <pre>
+?- getp(surfing, P).
+P = 0.453 
+</pre>
+            <p>We can also change the probability of the bonus, to see how that 
+              affects the probability of surfing.</p>
+            <pre>
+?- retract(p(bonus,_)).
+
+?- assert(p(bonus,0.3)).
+
+?- getp(surfing, P).
+P = 0.4035 
+</pre>
+            <p>That let's us see top down affects. What about rippling Bayes theorem 
+              back up to see what the fact that someone went surfing means for 
+              the probability they had a bonus? That's harder and requires propagating 
+              beliefs through the network. But its not too hard for graphs without 
+              loops, and there is a relatively straightforward algorithm for doing 
+              it that was originally published by Judea Pearl in 1988 in a book 
+              called <i>Probabilistic Reasoning in Intelligent Systems</i>, published 
+              by Morgan Kaufman.</p>
+            <p>There is a concise explanation of the algorithm in <a href="#facundo">Facundo 
+              Bromberg's</a> final project report, which describes a Java implementation 
+              of the algorithm. The <a href="#temple">Temple University</a> tutorial 
+              points to a Prolog program which does the same. The Prolog code 
+              is relatively obtuse unless you have the paper version of the algorithm 
+              to study as well.</p>
+            
+<p>Work in AI is all about knowledge representation and reasoning engines. Those 
+  two aspects are clear in this little example. The <b>p</b> and <b>cp</b> facts 
+  used above are a knowledge representation language for a probability network. 
+  The <b>getp</b> rules are a reasoning engine that uses that knowledge representation.</p>
+<hr>
+            <h2><a name="interactive_fiction"></a>Interactive Fiction</h2>
+            <h2><a name="user_interfaces"></a>Intelligent and Deceptive User Interfaces</h2>
+            <p><i>The Design of Everyday Things</i> by Donald A. Norman is a fantastic 
+              book that provides insight into the user interfaces of all sorts 
+              of things. He talks about doors, phones, light switches and the 
+              like, but there is a lot to be learned from him that applies to 
+              software as well.</p>
+            <p>A key concept in user interface is that the interface lead the 
+              user to a good conceptual model of the thing. For example, if you 
+              approach a door that has a handle you can grab, then you form a 
+              mental image of a door you can pull, and you pull. If it was a push 
+              door, then you pull in vain, feel like a fool, before pushing the 
+              door open.</p>
+            <p>On the other hand, a metal plate clearly indicates a door that 
+              can be pushed. But if that plate runs across the whole door, then 
+              you don't get a good mental image of which way the door opens, and 
+              you might wind up pushing on the hinge side.</p>
+            <p>We often run into doors that take a couple of tries to open because 
+              of bad interface design.</p>
+            <p>I recently took a shower in a house that had a fiendishly clever 
+              way of changing the water from the spigot to the shower head. Instead 
+              of an ugly lever on top of the spigot, the actual bottom of the 
+              spigot head could be rotated. It was a startling clean, very beautiful 
+              design. But to someone, like myself, first encountering it, I was 
+              left baffled for the longest time wondering how to get the shower 
+              to go.</p>
+            <p>The interface was deliberately deceptive, hiding the ugly workings 
+              by making the shower/spigot toggle lever look like something else. 
+              Pretty, but very frustrating to the first time user.</p>
+            <p>Taking this to software then, a goal in user interface design should 
+              be to lead the user to a good understanding of how the particular 
+              software works. Interfaces that lead the user away from that understanding 
+              are deceptive and frustrating, particularly to first time users.</p>
+            <p>The reason is we, as people, act based on our mental models. When 
+              we get a mental model of something, such as software, that is incorrect, 
+              we are led to try things which won't work, and wind up frustrated. 
+              On the other hand, when an interface leads to a good mental model, 
+              and we try things that work, it is satisfying, and leads us to continue 
+              to explore the software further, which, with a good interface leads 
+              to an even better understanding, etc. etc.</p>
+            <h3>HTML Editors</h3>
+            <p>While pondering a good example, I deleted some text in this article, 
+              and in addition to deleting the text, the tags of an adjacent heading 
+              changed as well. The delete key is a deceptive interface in this 
+              editor. It leads one to believe it deletes, yet it also changes 
+              adjacent HTML tags as well. I can't honestly say as I have a good 
+              mental model of exactly when and why that happens.</p>
+            <p>Which is why notepad and other pure text editors are often the 
+              editors of choice for HTML. While it is a pain to have to manually 
+              type all the tags, it is a user interface that much more clearly 
+              leads the user to a good conceptual model of how HTML works.</p>
+            <p>An HTML editor is deceptive in that it hides the ugly tags. Yet 
+              the insertion point is often ambiguous leading to strange behavior 
+              that is frustrating. It seems most good HTML tools, like Dream Weaver 
+              which I'm using, also provide the ability to edit the tagged text 
+              directly. This will be necessary up until the the day when they 
+              finally work out an interface that intuitively exposes all of the 
+              power of HTML.</p>
+            <h3>Rule-based Languages</h3>
+            <p>Rule-based languages have a similar problem. They present an interface, 
+              the rule syntax, which makes them appear as declarative chunks of 
+              knowledge. But how does the rule engine choose which rules to fire 
+              when? Without this knowledge a developer cannot effectively write 
+              rules, yet there is usually nothing in the syntax of the rules that 
+              even hints at that information.</p>
+            <p>The LEX and MIA strategies of OPS5 production (forward-chaining) 
+              rules are a perfect example. The designers wanted to have the rules 
+              fire in the most intuitive manner possible, so they coded complex 
+              algorithms that decided which rule to pick when many could fire. 
+              One strategy opted for rules with conditions referring to recently 
+              updated facts; the other opted for rules with greatest &quot;specicifity&quot;, 
+              meaning the most specific rule of those available would be chosen.</p>
+            <p>This was clever, but led to frustration as a developer's rules 
+              didn't execute as expected. Only after getting a full understanding 
+              of how LEX or MIA works could a programmer effectively use OPS5. 
+              In other words, the interface was deceptive in that it made it appear 
+              as if the rules were executing in an intuitive manner, but as soon 
+              as they didn't, the developer was left scratching his/her head in 
+              confusion.</p>
+            <p>KBMS was another production rule system inspired by OPS5, but it 
+              had an interface that better lead a developer to understanding its 
+              conflict resolution strategies. The first rules fired before the 
+              latter rules if there was a conflict. In other words, what you saw 
+              was what you got. And, that order could be overridden by specifying 
+              priorities on rules. While not as elegant as LEX or MIA, it was 
+              a lot easier for developers to understand.</p>
+            <h3>Natural Language and Interactive Fiction (IF)</h3>
+            <p>And finally to IF, which is what this newsletter is about. Many 
+              people criticize IF because it is frustrating to play because you 
+              wind up thrashing about trying things that don't seem to have any 
+              effect. I believe this is because the classic IF user interface 
+              is deliberately deceptive, and those that enjoy playing IF have 
+              developed a good understanding of how IF works despite the interface.</p>
+            <p>The underlying data model for an IF game is a collection of information 
+              about the people, places and things that are important in the game. 
+              This might include where the player is at, whether a room is lit 
+              or not, and what items a player is carrying.</p>
+            <p>And there are, internally, formal commands that manipulate that 
+              data. For example &quot;put cloak on hook&quot; will change the 
+              data model so the cloak, which was associated with the player, is 
+              now associated with the hook.</p>
+            <p>Now what makes a game fun is the puzzles. These are bits of the 
+              game that don't work in a standard manner, and the player needs 
+              to figure out some sequence of moves that will solve the puzzle. 
+              For example, in the very simple demonstration game, Cloak of Darkness, 
+              the barroom is dark and the reason is the cloak absorbs light.</p>
+            <p>When the player gets to the barroom, then the game informs him/her 
+              it is dark. OK. So the player naturally tries to turn on the light, 
+              but is told that's not a good idea. Hmmmm. This is where the problem 
+              arises. Is the player failing to turn on the light because of a 
+              misunderstanding of the game's vocabulary and commands? Or is this 
+              the meat of the puzzle?</p>
+            <p>There is nothing in the user interface of clever text to give the 
+              player even a clue. The experienced gamer might know what sorts 
+              of things should and shouldn't work, and will quickly move on. But 
+              the newbie?</p>
+            <p>This is often discussed on the IF discussion groups as the guess-the-verb 
+              problem. Numerous suggestions for menus and the like are often shot 
+              down because of a fear the menus will take away from the exploratory 
+              nature of the game, and also create a boring click-on-all-alternatives 
+              approach to solving the game.</p>
+            <p>Another example of the deliberately deceptive appears in one implementation 
+              of Cloak of Darkness where the hook in the cloak room, where you 
+              are supposed to hang the cloak, is described in the main body of 
+              text of the cloak room. In other words, it is not indicated as being 
+              an object in the room that the player can manipulate, but rather 
+              appears like part of the general description.</p>
+            <p>This too is deliberately deceptive, forcing the player to guess 
+              at which of the text in the description is meaningful for the game 
+              and which isn't.</p>
+            <p>It seems to me that IF would be better off if the games kept all 
+              of the wonderful text and descriptions output to the player, but 
+              also provided solid information about the internal game model and 
+              how the player might manipulate it. The idea would be to give the 
+              player the required tools for playing the game, but not the solution 
+              to the puzzle.</p>
+            <p>In reality, this is exactly the information that experienced IF 
+              games carry in their heads. It's just unavailable to the new player. 
+              See the code corner for some possible solutions.</p>
+            <h2><a name="rules_objects"></a>Rules vs Objects</h2>
+            <p>Object-oriented (OO) programming was a major breakthrough in software 
+              development, allowing a developer to easily keep data, and the procedures 
+              that work on that data, together. This was a more natural approach 
+              than older programming styles that forced a programmer to keep data 
+              and procedures separate.</p>
+            <p>But there are times when you would rather keep the data and procedures 
+              separate. Typically this occurs when you have operations that work 
+              on two or more objects that are peers. In other words, the operation 
+              is happening at a higher conceptual level than any of the objects.</p>
+            <p>The ugliness associated with C = A + B in a pure OO language reveals 
+              this weak knee. Because A and B are objects, you can't simply add 
+              them. You need to send the + message to one of them or the other.</p>
+            <p>In other words, the developer must make an arbitrary decision as 
+              to whether the addition will happen in the A object or the B one. 
+              And when that happens, the code loses the clarity of the idea that 
+              the addition is actually happening at a higher conceptual level 
+              than in either of the two objects.</p>
+            <p>Rules are often used to express relationships between different 
+              data elements in an application. They, like math operations, express 
+              concepts that do not rightly belong in any one data element or another. 
+              In this sense, they have a lot in common with database queries, 
+              where a query ties together data from different tables in a database.</p>
+            <p>Because a rule relates two or more data structures, it is most 
+              naturally represented as something external to both. In an OO application, 
+              however, the rule must be shoehorned into one object or the other. 
+              As with any procedural approach, if there are a large number of 
+              rules, this quickly causes the logic of the rules to be lost in 
+              arbitrary procedural decisions.</p>
+            <p>A pricing application, for example, is difficult to write procedurally 
+              because a price is related to many different data tables. It is 
+              easier to code a pricing application with a set of rules that are, 
+              in a sense, above the data structures and objects of the application, 
+              and which are triggered by patterns and interrelationships between 
+              those data structures and objects.</p>
+            <p>Coding IF presents a similar problem. The commands of the game, 
+              in general, change the relationships between the objects describing 
+              the game. The puzzles of the game invariably are defined in terms 
+              of relationships between the objects of the game.</p>
+            <p>Consider a command to turn on the light in the room. Whether or 
+              not this is possible requires data from the room object, the light 
+              object, and the player object which invariably has something to 
+              do with these puzzles.</p>
+            <p>In an OO game implementation the developer must artificially decide 
+              if that logic should that be associated with a light source, or 
+              the room, or the player. In a rule-based implementation, the logic 
+              is more clearly expressed externally to the various elements.</p>
+            <p>So objects are great for representing the data structures of a 
+              game, but the commands and puzzles are more naturally represented 
+              as rules.</p>
+            <p>In the case of IF, there is another advantage to having the rules 
+              represent the actions and separate from the data. It makes it very 
+              easy to implement meta rules that can provide a mechanism of hints 
+              to help steer the player into a good conceptual model of how the 
+              game works.</p>
+            <h2><a name="logicbases"></a>Application Specific Logicbases</h2>
+            <p>Logic is often a good way to express rules, especially if the rules 
+              are crisp, that is, without uncertainty or fuzziness. But it is 
+              rare that the required knowledge all fits neatly into logical relationships. 
+              There's always some ugly bits that aren't expressed cleanly using 
+              logic. (Sigh, just like OO isn't right for everything, neither is 
+              logic.)</p>
+            <p>In order to get the benefits of logic for an application, it is 
+              a good idea to create a library of helper, or application-specific 
+              predicates that carry out the work that is not easily expressed 
+              in logical relationships. The implementation of these predicates 
+              can be hidden, so that the knowledge engineers only need to work 
+              with the crisp, cleaner portions of the rules.</p>
+            <p>An example of this was the vaccination system mentioned a few issues 
+              back. In that application, application-specific predicates that 
+              handled date arithmetic and managed information gathering were hidden, 
+              so that the vaccination rules themselves could simply refer to them, 
+              checking, for example, if the second measles vaccination was after 
+              the second birthday or not.</p>
+            <p>The same approach can be used to create a tool for developing interactive 
+              fiction.</p>
+            <h2><a name="code_corner"></a>Code Corner - A Logicbase Approach to 
+              Interactive Fiction (IF)</h2>
+            <p>This month's code corner serves as initial documentation for the 
+              interactive fiction tool set and examples that are available for 
+              download from the <a href="http://www.ainnewsletter.net">newsletter 
+              downloads</a>.</p>
+            <p>Logicbase refers to the subset of logic programming that is most 
+              closely related to relational database. The facts/data in a logicbase 
+              are similar to relational data records; and the rules in a logicbase 
+              are similar to database queries. The tool for developing IF described 
+              here takes advantage of these attributes. The state of the game 
+              is represented in logical data structures, and logical relationships 
+              are used to describe the permissible actions.</p>
+            <p>There is a tremendous advantage in the logicbase approach, in that 
+              it offers, like other rule-based technologies, up to a 10-1 productivity 
+              gain for the right sort of application. And the rules that govern 
+              IF are the right sort of application.</p>
+            <p>This means that it is practical to create new and different sets 
+              of rules for governing the manipulation of objects and the movements 
+              of players in a game. It is not necessary to use a tool that has 
+              hard-coded into it all of the sorts of features one might like, 
+              such as support for lights, burnable objects, weights, tunneling, 
+              time travel, or whatever, because it is easy to add the features 
+              one needs as needed. </p>
+            <p>There were some other design goals in this system:</p>
+            <ul>
+              <li>Separate the text from the game logic, so translations to other 
+                national languages are easily supported.</li>
+              <li>Separate the allowed input vocabulary and grammar from the game 
+                logic, again to support different national languages.</li>
+              <li>Create a verb/action oriented coding environment that clearly 
+                brings out the logic of the commands.</li>
+              <li>Use a simple rule language that makes it easy to model any sort 
+                of game environment, allowing easy experimentation with game models 
+                that are different from the conventional IF ones.</li>
+              <li>Take advantage of the verb/action oriented coding to support 
+                context-sensitive hints and help that lead the player to a good 
+                understanding of the game mechanics without revealing the solutions 
+                to puzzles.</li>
+              <li>Use the input vocabulary and grammar to create the short form 
+                descriptions of items in the game, which ensures that the player 
+                is presented with text tokens that can be directly reused in commands.</li>
+            </ul>
+            <h3>Architecture</h3>
+            <p>The basic flow of control of the game is:</p>
+            <ul>
+              <li>Player enters natural language like command in a supported national 
+                language.</li>
+              <li>The grammar rules are used to parse the input to a formal command 
+                using the internal tokens of the game.</li>
+              <li>The formal command is passed to the game engine</li>
+              <li>The rules of the game engine are used to manipulate the data 
+                structures of the game.</li>
+              <li>Output tokens are generated as appropriate.</li>
+              <li>The national language text associated with the output tokens 
+                is presented to the player.</li>
+            </ul>
+
+            <p>For example:</p>
+            <blockquote> 
+              <p>The player might enter: &quot;hang the velvet cloak on the brass 
+                hook&quot;.</p>
+              <p>This gets parsed to the command: [put_on, cloak, hook] which 
+                is passed to the game engine.</p>
+              <p>The game engine then calls the rule: put_on(cloak,hook).</p>
+              <p>The pattern rule which fires might be: put_on(X,Y) :- delete( 
+                me, [wearing = X] ), add( Y, [contains = X] ), output(put_on(X,Y)). 
+                Where X and Y are variables that are bound to cloak and hook for 
+                the example.</p>
+              <p>The output token put_on(X,Y) might have the English text pattern: 
+                `The `, X, ` is now on the `, Y, `.`</p>
+            </blockquote>
+            <p>To create a game then requires the creation of two modules. One 
+              is the game logic, containing the commands and the mapping between 
+              commands and the rules of the game. The other is the national language 
+              module that has both the input vocabulary and grammar, and the text 
+              for the various output tokens. However, the national language module 
+              can be added later, as the game can be played using just the internal 
+              tokens during development.</p>
+            <h3>The Data Model</h3>
+            <p>Frames are a subset of objects, without the procedures, that provide 
+              a very flexible representation mechanism for the state of a game. 
+              Frames are not a standard part of logicbase, so support for frames 
+              becomes part of the set of application-specific support predicates.</p>
+            <p>A frame is represented by a name, and a list of slots and values. 
+              Rather than manipulate the frame structures directly, a set of predicates 
+              are provided to manipulate them:</p>
+            <blockquote> 
+              <p><b>make( Name, Slots )</b> - create a new frame of the given 
+                name with the specified slots.<br>
+                <b>query( Name, QueryPatterns )</b> - find values for slots<br>
+                <b>delete( Name, DeletePatterns )</b> - delete certain slot values<br>
+                <b>add( Name, AddPatterns )</b> - add certain slot values<br>
+                <b>change( Name, ChangePatterns )</b> - change certain values.</p>
+            </blockquote>
+            <p>For example, to create a frame to represent a place:</p>
+            <pre>make( duck_pen, [gate=close, contains=egg, contains=ducks, connects=yard] ).</pre>
+            <p>To ask if it contains an egg:</p>
+            <pre>query( duck_pen, [contains=egg] ).</pre>
+            <p>To ask where it connects (tokens beginning with upper case are 
+              variables) the query</p>
+            <pre>query( duck_pen, [connects=X] )</pre>
+            <p>will bind X with 'yard'.</p>
+            <p>To change the gate status to open:</p>
+            <pre>change( duck_pen, [gate=open] ).</pre>
+            <h3>The Game Rules</h3>
+            <p>The rules are written using the logicbase syntax of Prolog. The 
+              basic format is:</p>
+            <blockquote> 
+              <p><b>RulePattern :- Goal1, Goal2, ... GoalN</b>.</p>
+            </blockquote>
+            <p>Where</p>
+            <ul>
+              <li>RulePattern has the name of the rule and its arguments;</li>
+              <li><b>:-</b> is read as <b>if</b>;</li>
+              <li>The commas separating the list of goals are read as <b>and</b>; 
+                and</li>
+              <li>The goals are other query patterns.</li>
+            </ul>
+            <p>Here's an example initialization rule for a game that creates:</p>
+            <ul>
+              <li> a game frame for keeping track of the number of moves;</li>
+              <li>two frames describing places in the game and their contents 
+                and relationships; and</li>
+              <li>a frame for player, called you, specifying the initial location.</li>
+            </ul>
+            <pre>initialize :-
+   clear,
+   make( game, [ moves=0 ] ),
+   make( duck_pen, [connects=yard, contains=egg, contains=ducks] ),
+   make( yard, [connects=duck_pen] ),
+   make( you, [at=yard] ).
+</pre>
+            <p>Two commands in the game engine that manipulate these structures 
+              might be <b>go</b> and <b>take</b>. These commands are implemented 
+              as rules. Variables, indicated by initial upper case letters, make 
+              the rules general.</p>
+            <pre>go(Place) :-
+   change( you, [at=Place] ),
+   output( now_at(Place) ),
+   !.
+
+take(Thing) :-
+   query( you, [at=Here] ),
+   delete( Here, [contains=Thing] ),
+   add( you, [carrying=Thing] ),
+   output( now_have(Thing) ).
+</pre>
+            <p>A table of actions maps commands, represented as lists of tokens, 
+              to the rules. So far the two rules these would be:</p>
+            <pre>action( [go, Place], go(Place) ).
+action( [take, Thing], take(Thing) ).
+</pre>
+            <p>The application-specific supporting predicates allow the game to 
+              be run even if there are no national language text files. When supporting 
+              text is missing, the token is written as-is; and when the input 
+              vocabulary is missing, the internal command is created directly 
+              from the input tokens.</p>
+            <p>So, with just the code we've written so far, the game can be played:</p>
+            <pre>> go duck_pen
+now_at(duck_pen)
+> take egg
+now_have(egg)
+> go yard
+now_at(yard)
+> go outer_space
+now_at(outer_space)
+</pre>
+            <p>Well it works, but it lets us go into outer space, when that isn't 
+              really somewhere we should be able to go. Additional rules are added 
+              to define the constraints and put out appropriate messages. The 
+              rules are considered in the order they are written.</p>
+            <p>The exclamation mark at the end of each rule tells the game engine 
+              not to consider any other rules once this one has completed.</p>
+            <p>So in the following example, the first rule will succeed if it 
+              is NOT true that there is a connection. Notice that it just puts 
+              out a message and does not change the state of the game. But, if 
+              the first rule fails, meaning there IS a connection, then the second 
+              rule will be used which does change the state of the game to reflect 
+              the move.</p>
+            <pre>go(Place) :-
+   query( you, [at=Here] ),
+   not query( Here, [connects=Place] ),
+   output( cannot_go(Place) ),
+   !.
+go(Place) :-
+   change( you, [at=Place] ),
+   output( now_at(Place) ),
+   !.
+</pre>
+            <p>Now the game keeps us in line:</p>
+            <pre>> go outer_space
+cannot_go(outer_space)
+> go duck_pen
+now_at(duck_pen)
+</pre>
+            <p>The rules for go can then be further modified to support other 
+              constraints that we might want to model in the game. For example, 
+              if we wanted to add the idea of a gate that needs to be opened, 
+              the initialization and rules would change like this:</p>
+            <pre><font color="#666666">initialize :-
+   make( duck_pen, [connects=yard, contains=egg, contains=ducks,</font> gate=closed<font color="#666666">] ),
+   make( yard, [connects=duck_pen] ),
+   make( you, [at=yard] ).
+go(Place) :-
+   query( you, [at=Here] ),
+   not query( Here, [connects=Place] ),
+   output( cannot_go(Place) ),
+   !.</font>
+go(Place) :-
+   query( Place, [gate=closed] ),
+   output( gate_closed ),
+   !.
+<font color="#666666">go(Place) :-
+   change( you, [at=Place] ),
+   output( now_at(Place) ),
+   !.</font>
+</pre>
+            <p>Of course, now we have to add a command to let the player open 
+              the gate:</p>
+            <pre>open_passage(Passage) :-
+   query( you, [at=Here] ),
+   query( Here, [connects=Place, Passage=closed] ),
+   change( Place, [Passage=open] ),
+   output( opened ),
+   !.
+open_passage(Passage) :-
+   output( cant_open(Passage) ),
+   !.
+</pre>
+            <p> We use open_passage since open is a reserved word, but this doesn't 
+              effect the player because we map the input commands to the rule 
+              with:</p>
+            <pre>action( [open, X], open_passage(X) ).</pre>
+            <h4>Compass navigation digression</h4>
+            <p>Notice that this example implements a navigation mechanism based 
+              on connections between places, which the player will use with commands 
+              like &quot;go to the duck pen&quot;. This is a bit different from 
+              the normal IF navigation mechanism that uses compass directions, 
+              where the player navigates with commands like &quot;go west&quot;. 
+            <p>We could have implemented compass navigation just as easily: 
+            <pre>initialize :-
+   make ( duckpen, [east = yard, contains = egg, contains = ducks] ),
+   make( yard, [west = duckpen] )
+   make (you, [at = yard] ).
+
+go(Direction) :-
+   query( you, [at = Here]),
+   not query( Here, [ Direction = _ ] ),
+   output( cannot_go ),
+   !.
+go(Direction) :-
+   query( you, [at = Here] ),
+   query( Here, [ Direction = NewPlace] ),
+   change( you, [at = NewPlace] ).
+</pre>
+            <p>Now &quot;go west&quot; will get the player from the yard to the 
+              duck pen.</p>
+            <p>While sometimes compass navigation leads to interesting puzzles, 
+              for the most part, in my opinion, it simply adds a level of overhead 
+              in moving about the game, so I prefer the direct navigation. But 
+              this is the key point.</p>
+            <p><i>Because it is so easy to create the game mechanics, the author 
+              can implement whatever mechanics make the most sense to him/her.</i></p>
+            <p>So I like connections, someone else likes north/south, another 
+              might support both, and yet another might use X,Y,Z coordinates 
+              and let the player turn, step, etc. An X,Y,Z coordinate game model 
+              would allow support for interesting game options like tunneling 
+              when two places are geometrically close, or allowing explosives 
+              to open up new connections.</p>
+            <p>An X,Y,Z model would also make more sense if the game engine was 
+              used to support graphics instead of text.</p>
+            <p>Now a problem with this flexibility in game mechanics is that, 
+              using navigation as an example, an experienced IF player might expect 
+              navigation to be by compass direction. <i>But if there were good 
+              hints and help, then the mechanics of a particular game would be 
+              much more transparent, and the author would not have to rely on 
+              the player having in depth experience with IF games and conventions</i>.</p>
+            <h3>Text Output</h3>
+            <p>The actual output text is stored in a separate module, usually 
+              in a separate file. It is a collection of logical relations between 
+              the internal tokens and text to be displayed. The text can be a 
+              simple string, or a list (denoted by square brackets) of strings 
+              and variables (initial upper case letter) used to dynamically construct 
+              the output text. Strings are denoted by back quotes and can contain 
+              anything. Here's some examples for the game so far:</p>
+            <pre>text( gate_closed,
+   `The gate is closed.` ).
+text( cannot_go(Place),
+   [`You can't get to the `, Place, ` from here.`] ).
+text( now_at(Place),
+   [`You are now at the `, Place, `.`] ).
+text(now_have(X),
+   [`You are now carrying the `, X, `.`] ).
+</pre>
+            <p>The support for text is part of the application-specific extensions 
+              for the IF authoring tool. The 'output' predicate does the dirty 
+              work of finding the right national language file, if any, and doing 
+              the text substitution, if required, using for the variables the 
+              <b>input name</b> if it can be found, or the <b>internal</b> name 
+              if not.</p>
+            <p>The <b>internal name</b> is the name that is used in the game logic, 
+              such as <b>duck_pen</b>. It never contains spaces and always begins 
+              with a lower case letter.</p>
+            <p>The <b>input name</b> of a game token is the first choice of text 
+              that the player can use to refer to the item. <i>It is derived directly 
+              from the input vocabulary</i>. This is a key point. It means that 
+              when the game outputs a message about an item, it uses the exact 
+              wording that the player can then use to refer to that item.</p>
+            <p>So, the vocabulary for duck_pen might have &quot;duck pen&quot; 
+              as the first of multiple allowed input phrases, in which case it 
+              will be what is displayed. So the message now_at(duck_pen) will 
+              expand to: &quot;You are now at the duck pen&quot;.</p>
+            <p>In the Spanish version of the game (excuse my weak Spanish), the 
+              input vocabulary for <b>duck_pen</b> might be &quot;el corral por 
+              patos&quot; (Is corral right for ducks?) and the text for now_at(X) 
+              would be:</p>
+            <pre>text( now_at(Place),
+   [`Ahora esta a `, Place, `.`]).
+</pre>
+            <p>so the message comes out: &quot;Ahora esta a el corral por patos&quot;.</p>
+            <h3>Grammar Input</h3>
+            <p>For input, you define both the grammar rules and the vocabulary. 
+              Here's the grammar rule for commands with either a verb and an object, 
+              or just a verb. It allows for an optional article as well, being 
+              'the' or 'a'. These basic rules would be changed for languages that 
+              had different verb, object orders.</p>
+            <pre>player( [V, O] ) -->
+   verb(V),
+   article,
+   object(O).
+player( [V] ) -->
+   verb(V).
+</pre>
+            <p>The verbs and objects are defined with the actual words. So the 
+              player can input either &quot;take&quot; or &quot;pick up&quot; 
+              to invoke the verb <b>take</b>.</p>
+            <pre>verb(go) --> [go].
+verb(go) --> [go, to].
+verb(take) --> [take].
+verb(take) --> [pick, up].
+
+object(O) --> thing(O).
+object(O) --> place(O).
+
+thing(egg) --> [duck,egg].
+thing(egg) --> [egg].
+thing(ducks) --> [small, flock, of, ducks].
+thing(ducks) --> [ducks].
+thing(gate) --> [gate].
+
+place(duck_pen) --> [duck, pen].
+place(duck_pen) --> [pen].
+place(yard) --> [yard].
+</pre>
+            <p>And finally the articles, which are just ignored:</p>
+            <pre>article --> [the].
+article --> [a].
+article --> [].
+</pre>
+            <p>The grammar can be further modified to make it easier for the player. 
+              For example, supposed we wanted to the let the player invoke the 
+              <b>go</b> verb by just entering a place. By making a distinction 
+              between things and places, as we did, this is possible by simply 
+              adding another grammar rule:</p>
+            <pre>player( [go, P] ) -->
+   place(P).
+<font color="#666666">player( [V, O] ) -->
+   verb(V),
+   article,
+   object(O).
+player( [V] ) -->
+   verb(V).</font>
+</pre>
+            <p>Playing the game with the new inputs and outputs from the previous 
+              section:</p>
+            <pre>> go to the duck pen
+The gate is closed.
+
+> open gate
+opened
+
+> pen
+You are now at the duck pen.
+
+> pick up the egg
+You are now carrying the duck egg</pre>
+            <p>Notice how in each case the output uses the phrases &quot;duck 
+              pen&quot; and &quot;duck egg&quot;, no matter what was input. These 
+              are the first choices for input phrases for the internal names <b>duck_pen</b> 
+              and <b>egg</b>. <i>This interaction makes it much less likely that 
+              the player will stumble about using the wrong words to refer to 
+              a game element.</i></p>
+            <p>A Spanish version of the program might have these as part of the 
+              input vocabulary:</p>
+            <pre>verb(go) --> [vaya, a].
+verb(take) --> [levante].
+verb(take) --> [toma].
+thing(egg) --> [huevo, de, pato].
+thing(egg) --> [huevo].
+</pre>
+            <p>And a play would look like:</p>
+            <pre>> vaya a el corral por patos
+Ahora esta a el corral por patos.
+
+> levante el huevo de pato
+Tiene el huevo de pato.
+</pre>
+            <h3>User Friendly Information</h3>
+            <p>IF games always provide some tools for examining the surroundings. 
+              Here's the step-by-step way to add a command to the game, in this 
+              case <b>look</b>. It will display information about the place, its 
+              connections and contents. It will use the input names for the game 
+              elements so the player can easily use them in following commands.</p>
+            <p>1) Add the new verb and vocabulary to the inputs:</p>
+            <pre>verb(look) --> [look].
+</pre>
+            <p>2) Map the new command to a rule:</p>
+            <pre>action( [look], look ).
+</pre>
+            <p>3) Implement the rule. There are a number of points to note here.</p>
+            <ul>
+              <li>We keep wanting to know where 'here' is, so we add a helper 
+                rule that other rules can use to make that easier.</li>
+              <li>The application-specific predicates include <b>get_input_text</b> 
+                and <b>get_output_text</b> which can be used to more precisely 
+                control the output, in this case displaying both the input name 
+                and output text for a place.</li>
+              <li>Fail is a goal that fails. It causes the rule engine to backtrack, 
+                looking for other solutions. In this case that behavior is used 
+                to force the queries for connects= and contains= to find all the 
+                connections and contents.</li>
+            </ul>
+            <pre>here(H) :-
+   query( you, [at=H] ).
+
+look :-
+   here(H),
+   look(H).
+   
+look(Place) :-
+   get_input_text(Place, ShortText),
+   get_output_text(Place, LongText),
+   output( [ShortText, `: `, LongText] ),
+   look_connections(Place),
+   look_items(Place),
+   !.
+
+look_connections(Place) :-
+   query( Place, [connects=X] ),
+   output_nospace( can_go(X) ),
+   fail.
+look_connections(_).
+
+look_items(Place) :-
+   query( Place, [contains=X] ),
+   output_nospace( can_see(X) ),
+   fail.
+look_items(_).
+</pre>
+            <p>4) Add the new required output text.</p>
+            <pre>text(yard,
+   `A yard with grass and dandelions about.` ).
+text(duck_pen,
+   `A smelly noisy pen for ducks.` ).
+text(can_go(X),
+   [`You can go to the: `, X] ).
+text(can_see(X),
+   [`You can see a: `, X] ).
+</pre>
+            <p>Playing the game it looks like this:</p>
+            <pre>> look
+yard: A yard with grass and dandelions about.
+
+You can go to the: duck pen
+
+> duck pen
+The gate is closed.
+
+> Open gate
+opened
+
+> go to the pen
+You are now at the duck pen.
+
+> look
+duck pen: A smelly noisy pen for ducks.
+
+You can go to the: yard
+You can see a: duck egg
+You can see a: small flock of ducks
+
+> take the small flock of ducks
+You are now carrying the small flock of ducks.
+</pre>
+            <p>OK, maybe we shouldn't let the player take the ducks. Special handling 
+              and the light touch of many IF games, which makes them so entertaining, 
+              can be easily added. We also add another useful helper rule to determine 
+              if a thing is 'here' or not. It's here if either the player is carrying 
+              it, or its contained at the place where the player is. The text 
+              for duck_problems will contain some wise remarks about the problems 
+              with trying to carry a bunch of ducks.</p>
+            <pre>is_here(X) :-
+   query(you, [carrying=X] ).
+is_here(X) :-
+   here(H),
+   query(H, [contains=X] ).
+   
+take(ducks) :-
+   is_here(ducks),
+   output( duck_problems ),
+   !.
+take(Thing) :-
+   here(H),
+   delete( H, [contains=Thing] ),
+   add( you, [carrying=Thing] ),
+   output( now_have(Thing) ),
+   !.
+take(Thing) :-
+   output( not_here(Thing) ),
+   !.
+</pre>
+            <h3>Help, Context-Sensitive Hints, and Options</h3>
+            <p>It's easy to add a help command that outputs the basics of the 
+              game. This should describe how to use the standard commands of the 
+              game, such as <b>look</b>. It should also suggest that if the player 
+              gets stuck, or is learning their way around the game, then hints 
+              and options will help.</p>
+            <pre>text(help,
+   [`The basic commands are:\n`,
+    `   look - look about\n`,
+    `   hint - get possible verbs\n`,
+    `   options - get all options\n`,
+    `   quit - quit the game\n` ]).
+</pre>
+            <p>Implementing context-sensitive hints is relatively straight forward. 
+              First we define a rule called <b>option</b> that for each command 
+              defines when that command is an option. It is purely up the game 
+              designer on how tight or loose to make these options which will 
+              be shown to the player if he/she asks. For the sample game we might 
+              define the options for the commands like this:</p>
+            <blockquote> 
+              <p><b>go</b> - is an option when there is a connection to somewhere, 
+                but we don't check for gates or other obstacles.<br>
+                <b>take</b> - is an option when there is something contained in 
+                the place the player is at, but we don't check for things that 
+                might not be able to be taken.<br>
+                <b>drop</b> - is an option if the player is carrying something.<br>
+                <b>open</b> - is an option if there is something that can be opened.</p>
+            </blockquote>
+            <p>Here's the code that implements these rules:</p>
+            <pre>option( [go, X] ) :-
+   here(H),
+   query( H, [connects=X] ).
+option( [take, X] ) :-
+   here(H),
+   query( H, [contains=X] ).
+option( [drop, X] ) :-
+   query( you, [carrying=X] ).
+option( [open, X] ) :-
+   here(H),
+   query( H, [connects=Y] ),
+   query( Y, [X=closed] ).
+</pre>
+            <p>A rule called <b>options</b> can then be implemented that walks 
+              through all the possible options. Because we didn't use the exclamation 
+              point to tell the rule engine to stop after finding a solution, 
+              the fail in <b>options</b> will cause the rule engine to backtrack 
+              through all the options.</p>
+            <pre>options :-
+   option(Command),
+   get_input_text(Command, Text),
+   output_nospace(Text),
+   fail.
+Options :-
+   output_nospace(``).
+</pre>
+            <p>Hints are a little trickier. For hints we don't want to lay out 
+              all the options, but just the verbs that are in play, and it would 
+              be nice to have a more condensed sort of output. To do this we use 
+              the syntax [V|_] which lets us just pick up the first token of a 
+              list, and some more application-specific extensions to find all 
+              of the verbs and their text first, then remove the duplicates and 
+              display the list on one line.</p>
+            <pre>hint :-
+   findall(T,
+      ( option( [V|_] ),
+        get_input_text(V, T) ),
+      Verbs ),
+   remove_dups(Verbs, VerbsNoDups),
+   output(verbs_to_try(VerbsNoDups)).
+</pre>
+            <p>We can now run the game and watch how the hints and options change 
+              with the situation.</p>
+            <pre>> help
+The basic commands are:
+   look - look about
+   hint - get possible actions
+   options - get all options
+   quit - quit the game
+
+> hint
+Try one of these actions: go to, open
+
+> options
+go to duck pen
+open gate
+
+> open gate
+opened
+
+> go pen
+You are now at the duck pen.
+
+> Hint
+Try one of these actions: go to, take
+
+> options
+go to yard
+take duck egg
+take small flock of ducks
+
+> take egg
+You are now carrying the duck egg.
+
+> Options
+go to yard
+take small flock of ducks
+drop duck egg
+
+> hint
+Try one of these actions: go to, take, drop
+</pre>
+            <p>This facility makes it easy to create a game that a player can 
+              learn as he/she plays. The hints and options are voluntary, but 
+              they could be very useful for the first few moves in a new game. 
+              The player would very quickly get the hang of things and be able 
+              to start playing. They wouldn't be needed again until the player 
+              got stuck.</p>
+            <p>Note that the options as coded here would not give away the solutions 
+              to any of the puzzles often found in IF. They simply lay out the 
+              possible moves at a point and place in the game. They don't suggest 
+              the complex sequence of moves that might be necessary to solve some 
+              puzzle.</p>
+            <p>They can also be deliberately misleading, suggesting actions that 
+              lead to the funny messages at the various dead ends. For example, 
+              in the sample game the option to take the ducks is clearly presented 
+              for the player to try. But, and this is the main point, they steer 
+              the player away from thrashing about trying to figure out what's 
+              possible and what's not.</p>
+            <h3>Mechanical Details</h3>
+            <p>The application-specific predicates provide other services for 
+              the game as well, such as save and restore (they just write all 
+              the frames out to a file and/or read them back).</p>
+            <p>Other mechanics, such as keeping score and counting moves, and 
+              using different displays based on whether a place has been visited 
+              or not, are all easily coded into the game as well. They are, like 
+              everything else, just tokens in the frames that are manipulated 
+              by the rules.</p>
+            <p>Here's a general game frame that can be used to keep score:</p>
+            <pre>   make( game, [ moves=0, score = 0 ] )</pre>
+            <p>This is the entry point to the game logic that is called for each 
+              move. It can be used to implement moves by non-playing characters 
+              and the like. For example, the ducks might move about on each turn. 
+              Here we just keep track of the moves:</p>
+            <pre>tick(Command) :-
+   take_action(Command),
+   change( game, [moves+1] ).
+</pre>
+            <p>We could similarly increment the score after certain key moves, 
+              such as if the player takes the duck egg.</p>
+            <p>In any case, the game continues to evolve, limited only by the 
+              imagination and creativity of the author.</p>
+            <h3>GUI</h3>
+            <p>Graphical interfaces are nice, and the tool described here comes 
+              with the option to run in a graphical environment.</p>
+            
+            <p>The help and language menus are driven from the game, and the names 
+              of the menu items are driven from the national language module used 
+              for the game. The player can switch back and forth from one language 
+              to another.</p>
+            <h3>Beta Version</h3>
+            <p>A beta version of this tool for developing IF is available in the 
+              download section of the newsletter archives. It contains two small 
+              sample games, one is <i>Duck World</i> which is similar to what 
+              was discussed here but with non-playing characters, and the other 
+              is <i>Cloak of Darkness</i>, and equally trivial game designed to 
+              be used to compare various IF authoring tools.</p>
+            <p>Any and all comments are welcome.</p>
+            <p></p>
+<hr>
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</body>
+</html>

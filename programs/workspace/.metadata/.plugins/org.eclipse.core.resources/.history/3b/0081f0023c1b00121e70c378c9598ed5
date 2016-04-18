@@ -1,0 +1,27 @@
+% A simple task management system
+
+save_tasks :-
+  tell('tasks.txt'),
+  listing(tasks),
+  told.
+
+restore_tasks :-
+  consult('tasks.txt').
+
+new_task(Task) :-
+  assert( task(Task, not_started) ).
+  
+done(Task) :-
+  retract( task(Task, _) ).
+  
+change_status(Task, Status) :-
+  retract( task(Task, _) ),
+  assert( task(Task, Status) ).
+  
+list_tasks :-
+  task(Task, Status),
+  write(Task), write(‘ : ‘),
+  write(Status), nl,
+  fail.
+list_tasks.
+  

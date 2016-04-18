@@ -1,0 +1,3 @@
+%:- set_prolog_flag(utf8io, on).
+
+a(㐱).

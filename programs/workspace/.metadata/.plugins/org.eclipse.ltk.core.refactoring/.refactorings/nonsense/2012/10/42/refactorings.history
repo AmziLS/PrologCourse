@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;nonsense/simple_queries.pro&apos; to &apos;queries.pro&apos;" description="Rename resource &apos;simple_queries.pro&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="simple_queries.pro" name="queries.pro" stamp="1350702793431" updateReferences="true"/>
+</session>
